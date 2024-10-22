@@ -66,6 +66,11 @@ contract Tea is OwnableRoles, ERC20Votes, ERC20Burnable {
         totalMinted = newTotalMinted;
     }
 
+    function burnFrom(address account, uint256 value) public override {
+        if (account != msg.sender) _spendAllowance(account, msg.sender, value);
+        _burn(account, value);
+    }
+
     /* ------------------------------- Role Admin ------------------------------- */
 
     function addMinter(address toAdd) external {

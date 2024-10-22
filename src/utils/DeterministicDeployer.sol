@@ -18,11 +18,16 @@ t@@                 @@   @@       @@@@@@@   @@@@@@                  @@@@#@@@@@@
 /* solhint-disable no-unused-import */
 import { ERC1967Proxy } from "@openzeppelin/proxy/ERC1967/ERC1967Proxy.sol";
 /* solhint-enable no-unused-import */
+import { Tea } from "../TeaToken/Tea.sol";
 
 library DeterministicDeployer {
     error DeploymentFailed();
 
     address internal constant SAFE_SINGLETON_FACTORY = 0x914d7Fec6aaC8cd542e72Bca78B30650d45643d7;
+
+    function _deployTea(bytes32 salt, address initialGovernor) internal returns (address) {
+        return DeterministicDeployer._deploy(salt, type(Tea).creationCode, abi.encode(initialGovernor));
+    }
 
     function _deploy(
         bytes32 salt,
