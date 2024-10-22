@@ -1,0 +1,4 @@
+dependencies:
+  soliditylang.org: =0.8.21
+  getfoundry.sh: '*'
+  pnpm.io: '*'

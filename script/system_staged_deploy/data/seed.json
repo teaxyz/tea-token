@@ -1,0 +1,16 @@
+{
+  "teaSalt": "0x000000000000000000000000000000000000000000ffffffaaaaabbbbbbbbbbb",
+  "factoryImplSalt": "0x000000000000000000000000000000000000000001ffffffaaaaabbbbbbbbbbb",
+  "factoryProxySalt": "0x000000000000000000000000000000000000000002ffffffaaaaabbbbbbbbbbb",
+  "stTeaSalt": "0x000000000000000000000000000000000000000003ffffffaaaaabbbbbbbbbbb",
+  "registrySalt": "0x000000000000000000000000000000000000000004ffffffaaaaabbbbbbbbbbb",
+  "stakingSalt": "0x000000000000000000000000000000000000000005ffffffaaaaabbbbbbbbbbb",
+  "distributorSalt": "0x000000000000000000000000000000000000000006ffffffaaaaabbbbbbbbbbb",
+  "burnEscrowSalt": "0x000000000000000000000000000000000000000007ffffffaaaaabbbbbbbbbbb",
+  "opsDeployer0": "0x1D0b4BeE449434DB39453E2582FF84aeD94Df27b",
+  "opsDeployer1": "0xaef0E21F752990aD9690e5237562D8faF4546FC3",
+  "distributorOwner": "0xA74ff8f772c58bB21c8dB8B749129c99cB3542Cc",
+  "deployKeyIsInitialGovernor": true,
+  "teaTreasuryMultisig": "0x7611d81b7e314c163b63ca077739ad667fce5068",
+  "initialGovernor": "0x7611d81b7e314c163b63ca077739ad667fce5068"
+}

@@ -1,0 +1,35 @@
+{
+  "name": "@teaxyz/tea-token",
+  "description": "$TEA",
+  "version": "1.0.0",
+  "author": {
+    "name": "teaxyz",
+    "url": "https://github.com/teaxyz"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "solhint-community": "^4.0.0"
+  },
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "forge",
+    "foundry",
+    "smart-contracts",
+    "solidity",
+    "template"
+  ],
+  "private": true,
+  "scripts": {
+    "clean": "rm -rf cache out",
+    "lint": "pnpm lint:sol && pnpm prettier:check",
+    "lint:sol": "forge fmt --check && pnpm solhint \"{script,src,test}/**/*.sol\"",
+    "prettier:check": "prettier --check \"{script,src,test}/**/*.{json,md,yml}\"",
+    "prettier:write": "prettier --write \"{script,src,test}/**/*.{json,md,yml}\""
+  },
+  "dependencies": {
+    "ethers": "^6.13.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
