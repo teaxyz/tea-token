@@ -33,7 +33,7 @@ contract Tea is OwnableRoles, ERC20Votes, ERC20Burnable {
     uint256 public constant MINTER_ROLE = 1 << 0; // 01 bitmap flag
     uint256 public constant FACTORY_ROLE = 1 << 1; // 10 bitmap flag
 
-    uint256 public constant MAX_SUPPLY = 10_000_000_000 ether;
+    uint256 public constant MAX_SUPPLY = 100_000_000_000 ether;
 
     /* --------------------------------- Globals -------------------------------- */
 
