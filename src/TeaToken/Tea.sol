@@ -26,7 +26,8 @@ import { ERC20Burnable } from "@openzeppelin/token/ERC20/extensions/ERC20Burnabl
 
 contract Tea is Ownable2Step, ERC20Votes, ERC20Burnable {
     /* -------------------------------- Constants ------------------------------- */
-    uint256 public constant INITIAL_SUPPLY = 10_000_000_000 ether;
+
+    uint256 public constant INITIAL_SUPPLY = 100_000_000_000 ether;
 
     /* --------------------------------- Globals -------------------------------- */
 
