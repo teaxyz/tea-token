@@ -44,11 +44,12 @@ contract TokenDeploy {
         bytes32 codeHash =
             keccak256(abi.encodePacked(type(MintManager).creationCode, abi.encode(INITIAL_GOVERNOR, tea)));
         address _mintManager = Create2.computeAddress(salt2, codeHash, address(this));
+        mintManager = _mintManager;
+
         Tea(tea).transferOwnership(_mintManager);
         Tea(tea).transfer(INITIAL_GOVERNOR, Tea(tea).totalSupply());
 
         // Record address.
         if (_mintManager != address(new MintManager{ salt: salt2 }(INITIAL_GOVERNOR, tea))) revert AddressMismatch();
-        mintManager = _mintManager;
     }
 }

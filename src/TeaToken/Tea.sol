@@ -61,6 +61,7 @@ contract Tea is Ownable2Step, ERC20Votes, ERC20Burnable {
 
     function burnFrom(address account, uint256 value) public override {
         if (account != msg.sender) _spendAllowance(account, msg.sender, value);
+
         _burn(account, value);
     }
 }
