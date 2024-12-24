@@ -5,12 +5,18 @@ import { VmSafe } from "@prb/test/Vm.sol";
 import { PRBTest } from "@prb/test/PRBTest.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 
+import { Create2 } from "@openzeppelin/utils/Create2.sol";
+
 import { Tea } from "../src/TeaToken/Tea.sol";
+import { TokenDeploy } from "../src/TeaToken/TokenDeploy.sol";
+import { MintManager } from "../src/TeaToken/MintManager.sol";
 import { DeterministicDeployer } from "../src/utils/DeterministicDeployer.sol";
 
 /* solhint-disable max-states-count */
 contract TeaTokenTest is PRBTest, StdCheats {
     Tea internal tea;
+    TokenDeploy internal tokenDeploy;
+    MintManager internal mintManager;
 
     VmSafe.Wallet internal initialGovernor = vm.createWallet("Initial Gov Account");
     VmSafe.Wallet internal alice = vm.createWallet("Alice Account");
@@ -22,21 +28,36 @@ contract TeaTokenTest is PRBTest, StdCheats {
     function setUp() public virtual {
         vm.createSelectFork({ urlOrAlias: "mainnet", blockNumber: 20_456_340 });
         bytes32 salt = keccak256(abi.encode(0x00, "tea"));
-        tea = Tea(DeterministicDeployer._deployTea(salt, initialGovernor.addr));
+        tokenDeploy = TokenDeploy(
+            DeterministicDeployer._deploy(salt, type(TokenDeploy).creationCode, abi.encode(initialGovernor.addr))
+        );
+
+        vm.prank(initialGovernor.addr);
+        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)));
+
+        tea = Tea(tokenDeploy.tea());
+        mintManager = MintManager(tokenDeploy.mintManager());
     }
 
     function test_owner() public {
-        assertEq(tea.owner(), initialGovernor.addr);
+        assertEq(tea.owner(), address(mintManager));
     }
 
     function test_mint_fail() public {
         vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(this)));
         tea.mintTo(alice.addr, 1);
+
+        vm.startPrank(initialGovernor.addr);
+        vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, initialGovernor.addr));
+        tea.mintTo(alice.addr, 1);
+        vm.stopPrank();
     }
 
     function test_mint_succeed() public {
+        vm.warp(block.timestamp + 365 days);
+
         vm.prank(initialGovernor.addr);
-        tea.mintTo(alice.addr, 1);
+        mintManager.mintTo(alice.addr, 1);
 
         assertEq(tea.totalSupply(), tea.INITIAL_SUPPLY() + 1);
         assertEq(tea.totalMinted(), tea.INITIAL_SUPPLY() + 1);
@@ -44,8 +65,10 @@ contract TeaTokenTest is PRBTest, StdCheats {
     }
 
     function test_burn_fail() public {
+        vm.warp(block.timestamp + 365 days);
+
         vm.prank(initialGovernor.addr);
-        tea.mintTo(alice.addr, 1);
+        mintManager.mintTo(alice.addr, 1);
 
         vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(this), 0, 1));
         tea.burnFrom(alice.addr, 1);
