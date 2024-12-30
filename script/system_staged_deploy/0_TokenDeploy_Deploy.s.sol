@@ -21,3 +21,7 @@ contract TeaTokenDeployScript is BaseScript {
         vm.writeJson(deployments, string.concat("script/system_staged_deploy/data/TokenDeploy.json"));
     }
 }
+
+// forge -vvvv script script/system_staged_deploy/0_TokenDeploy_Deploy.s.sol  --rpc-url
+// 'https://tea-sepolia.g.alchemy.com/v2/CnnuuM3hMxX9rZcvUP6nQDMsQCYVWQcl' --private-key "$DEPLOYER_PRIVATE_KEY"
+// --optimize --optimizer-runs 1 --via-ir --broadcast
