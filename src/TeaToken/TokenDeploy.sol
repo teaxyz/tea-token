@@ -24,14 +24,21 @@ contract TokenDeploy {
     error AlreadyDeployed();
     error AddressMismatch();
 
+    /// @notice The address of the initial governor to be set as owner for the Tea and MintManager contracts.
     address public immutable INITIAL_GOVERNOR;
+
+    /// @notice The address of the deployed Tea contract.
     address public tea;
+    /// @notice The address of the deployed MintManager contract.
     address public mintManager;
 
     constructor(address initialGovernor_) {
         INITIAL_GOVERNOR = initialGovernor_;
     }
 
+    /// @notice Deploys the Tea and MintManager contracts.
+    /// @param salt The salt to use for the Tea contract deployment.
+    /// @param salt2 The salt to use for the MintManager contract deployment.
     function deploy(bytes32 salt, bytes32 salt2) external {
         // One time use.
         if (msg.sender != INITIAL_GOVERNOR) revert Unauthorized();

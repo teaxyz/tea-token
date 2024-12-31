@@ -31,6 +31,7 @@ contract Tea is Ownable2Step, ERC20Votes, ERC20Burnable {
 
     /* --------------------------------- Globals -------------------------------- */
 
+    /// @notice Total number of tokens minted, including burned tokens
     uint256 public totalMinted;
 
     /* ------------------------------- Constructor ------------------------------ */
@@ -51,6 +52,10 @@ contract Tea is Ownable2Step, ERC20Votes, ERC20Burnable {
 
     /* ------------------------------- Mint / Burn ------------------------------ */
 
+    /// @notice Mints new tokens to `account` (only callable by the owner).
+    /// @dev Increments `totalMinted`.
+    /// @param account The address to receive minted tokens.
+    /// @param value   The amount of tokens to be minted.
     function mintTo(address account, uint256 value) external {
         _checkOwner();
 
@@ -59,6 +64,7 @@ contract Tea is Ownable2Step, ERC20Votes, ERC20Burnable {
         _mint(account, value);
     }
 
+    /// @inheritdoc ERC20Burnable
     function burnFrom(address account, uint256 value) public override {
         if (account != msg.sender) _spendAllowance(account, msg.sender, value);
 
