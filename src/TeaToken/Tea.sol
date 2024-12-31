@@ -45,7 +45,7 @@ contract Tea is Ownable2Step, ERC20Votes, ERC20Burnable {
         _mint(initialGovernor_, INITIAL_SUPPLY);
     }
 
-    function _update(address from, address to, uint256 value) internal virtual override(ERC20Votes, ERC20) {
+    function _update(address from, address to, uint256 value) internal override(ERC20Votes, ERC20) {
         super._update(from, to, value);
     }
 
