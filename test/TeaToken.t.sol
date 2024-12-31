@@ -4,8 +4,7 @@ pragma solidity 0.8.26;
 import { VmSafe } from "@prb/test/Vm.sol";
 import { PRBTest } from "@prb/test/PRBTest.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
-
-import { Create2 } from "@openzeppelin/utils/Create2.sol";
+import { IERC20Errors } from "@openzeppelin/interfaces/draft-IERC6093.sol";
 
 import { Tea } from "../src/TeaToken/Tea.sol";
 import { TokenDeploy } from "../src/TeaToken/TokenDeploy.sol";
@@ -72,5 +71,74 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(this), 0, 1));
         tea.burnFrom(alice.addr, 1);
+    }
+
+    function test_transfer_functionality() public {
+        vm.warp(block.timestamp + 365 days);
+
+        // Mint some tokens to alice
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 100);
+
+        // Test transfer
+        vm.prank(alice.addr);
+        tea.transfer(bob.addr, 50);
+
+        assertEq(tea.balanceOf(alice.addr), 50);
+        assertEq(tea.balanceOf(bob.addr), 50);
+    }
+
+    function test_approve_and_transferFrom() public {
+        vm.warp(block.timestamp + 365 days);
+
+        // Mint some tokens to alice
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 100);
+
+        // Alice approves Bob to spend 30 tokens
+        vm.prank(alice.addr);
+        tea.approve(bob.addr, 30);
+
+        // Bob transfers 20 tokens from Alice to himself
+        vm.prank(bob.addr);
+        tea.transferFrom(alice.addr, bob.addr, 20);
+
+        assertEq(tea.balanceOf(alice.addr), 80);
+        assertEq(tea.balanceOf(bob.addr), 20);
+        assertEq(tea.allowance(alice.addr, bob.addr), 10);
+    }
+
+    function test_burn_succeed() public {
+        vm.warp(block.timestamp + 365 days);
+
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 1);
+
+        vm.prank(alice.addr);
+        tea.approve(address(this), 1);
+
+        tea.burnFrom(alice.addr, 1);
+
+        assertEq(tea.totalSupply(), tea.INITIAL_SUPPLY());
+        assertEq(tea.totalMinted(), tea.INITIAL_SUPPLY() + 1);
+        assertEq(tea.balanceOf(alice.addr), 0);
+    }
+
+    function test_zero_address_transfers() public {
+        vm.warp(block.timestamp + 365 days);
+
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 100);
+
+        vm.prank(alice.addr);
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, address(0)));
+        tea.transfer(address(0), 50);
+    }
+
+    function test_mint_toZeroAddress_reverts() external {
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(initialGovernor.addr);
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, address(0)));
+        mintManager.mintTo(address(0), 100);
     }
 }

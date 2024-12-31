@@ -136,22 +136,52 @@ contract MintManager_mint_Test is MintManager_Initializer {
         // Token balance does not increase.
         assertEq(tea.balanceOf(initialGovernor.addr), tea.INITIAL_SUPPLY() + 100);
     }
+
+    function test_mint_multipleMints_withinPeriod_reverts() external {
+        // First mint after 1 year
+        vm.warp(block.timestamp + 365 days);
+        vm.startPrank(initialGovernor.addr);
+
+        // Mint 1% first
+        uint256 onePercent = (tea.totalSupply() * 10) / mintManager.DENOMINATOR();
+        mintManager.mintTo(initialGovernor.addr, onePercent);
+
+        // Try to mint another 1% - should fail as the mint period has not elapsed
+        uint256 onePointFivePercent = (tea.totalSupply() * 10) / mintManager.DENOMINATOR();
+        vm.expectRevert("MintManager: minting not permitted yet");
+        mintManager.mintTo(initialGovernor.addr, onePointFivePercent);
+        vm.stopPrank();
+    }
+
+    function test_mint_exactlyAtPeriodBoundary_reverts() external {
+        uint256 ts = block.timestamp;
+        // First mint after 1 year
+        vm.warp(ts + 365 days);
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(initialGovernor.addr, 100);
+
+        // Try minting exactly at mintPermittedAfter (should fail)
+        vm.warp(ts + 365 days + mintManager.MINT_PERIOD() - 1);
+        vm.prank(initialGovernor.addr);
+        vm.expectRevert("MintManager: minting not permitted yet");
+        mintManager.mintTo(initialGovernor.addr, 100);
+    }
+
+    function test_mint_exactlyAtCap_succeeds() external {
+        vm.warp(block.timestamp + 365 days);
+        vm.startPrank(initialGovernor.addr);
+
+        // Calculate exact 2% of total supply
+        uint256 exactCap = (tea.totalSupply() * mintManager.MINT_CAP()) / mintManager.DENOMINATOR();
+        mintManager.mintTo(initialGovernor.addr, exactCap);
+
+        // Verify balance increased by exactly 2%
+        assertEq(tea.balanceOf(initialGovernor.addr), tea.INITIAL_SUPPLY() + exactCap);
+        vm.stopPrank();
+    }
 }
 
 contract MintManager_upgrade_Test is MintManager_Initializer {
-    /// @dev Tests that the owner can upgrade the mint mintManager.
-    function test_upgrade_fromOwner_succeeds() external {
-        // Upgrade to new mintManager.
-        vm.prank(initialGovernor.addr);
-        mintManager.upgrade(alice.addr);
-
-        vm.prank(alice.addr);
-        tea.acceptOwnership();
-
-        // New manager is alice.addr.
-        assertEq(tea.owner(), alice.addr);
-    }
-
     /// @dev Tests that the upgrade function reverts when called by a non-owner.
     function test_upgrade_fromNotOwner_reverts() external {
         // Upgrade from alice.addr fails.
@@ -167,5 +197,23 @@ contract MintManager_upgrade_Test is MintManager_Initializer {
         vm.prank(initialGovernor.addr);
         vm.expectRevert("MintManager: mint manager cannot be the zero address");
         mintManager.upgrade(address(0));
+    }
+
+    /// @dev Tests that the owner can upgrade the mint mintManager.
+    function test_upgrade_fromOwner_succeeds() external {
+        // Upgrade to new mintManager
+        vm.prank(initialGovernor.addr);
+        mintManager.upgrade(alice.addr);
+
+        // Check pending state
+        assertEq(tea.owner(), address(mintManager));
+        assertEq(tea.pendingOwner(), alice.addr);
+
+        vm.prank(alice.addr);
+        tea.acceptOwnership();
+
+        // New manager is alice.addr
+        assertEq(tea.owner(), alice.addr);
+        assertEq(tea.pendingOwner(), address(0));
     }
 }
