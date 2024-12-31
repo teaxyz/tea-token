@@ -32,7 +32,7 @@ contract TokenDeploy {
         INITIAL_GOVERNOR = initialGovernor_;
     }
 
-    function deploy(bytes32 salt, bytes32 salt2) public {
+    function deploy(bytes32 salt, bytes32 salt2) external {
         // One time use.
         if (msg.sender != INITIAL_GOVERNOR) revert Unauthorized();
         if (tea != address(0)) revert AlreadyDeployed();

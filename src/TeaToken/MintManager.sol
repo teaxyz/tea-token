@@ -50,7 +50,7 @@ contract MintManager is Ownable2Step {
     ///         governance token per year.
     /// @param _account The account receiving minted tokens.
     /// @param _amount  The amount of tokens to mint.
-    function mintTo(address _account, uint256 _amount) public onlyOwner {
+    function mintTo(address _account, uint256 _amount) external onlyOwner {
         require(mintPermittedAfter <= block.timestamp, "MintManager: minting not permitted yet");
         require(_amount <= (tea.totalSupply() * MINT_CAP) / DENOMINATOR, "MintManager: mint amount exceeds cap");
 
@@ -60,7 +60,7 @@ contract MintManager is Ownable2Step {
 
     /// @notice Upgrade the owner of the governance token to a new MintManager.
     /// @param _newMintManager The MintManager to upgrade to.
-    function upgrade(address _newMintManager) public onlyOwner {
+    function upgrade(address _newMintManager) external onlyOwner {
         require(_newMintManager != address(0), "MintManager: mint manager cannot be the zero address");
 
         tea.transferOwnership(_newMintManager);

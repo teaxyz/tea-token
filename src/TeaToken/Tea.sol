@@ -51,7 +51,7 @@ contract Tea is Ownable2Step, ERC20Votes, ERC20Burnable {
 
     /* ------------------------------- Mint / Burn ------------------------------ */
 
-    function mintTo(address account, uint256 value) public {
+    function mintTo(address account, uint256 value) external {
         _checkOwner();
 
         totalMinted = totalMinted + value;
