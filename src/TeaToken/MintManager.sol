@@ -21,7 +21,7 @@ contract MintManager is Ownable2Step {
     Tea public immutable tea;
 
     /// @notice The amount of tokens that can be minted per year.
-    ///         The value is a fixed point number with 4 decimals.
+    ///         The value is a fixed point number with 3 decimals.
     uint256 public constant MINT_CAP = 20; // 2%
 
     /// @notice The number of decimals for the MINT_CAP.
