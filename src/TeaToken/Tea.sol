@@ -19,81 +19,48 @@ import { ERC20Votes } from "@openzeppelin/token/ERC20/extensions/ERC20Votes.sol"
 /* solhint-disable no-unused-import */
 import { EIP712 } from "@openzeppelin/utils/cryptography/EIP712.sol";
 import { ERC20 } from "@openzeppelin/token/ERC20/ERC20.sol";
+import { Ownable } from "@openzeppelin/access/Ownable.sol";
 /* solhint-enable no-unused-import */
-import { OwnableRoles } from "@solady/auth/OwnableRoles.sol";
+import { Ownable2Step } from "@openzeppelin/access/Ownable2Step.sol";
 import { ERC20Burnable } from "@openzeppelin/token/ERC20/extensions/ERC20Burnable.sol";
 
-contract Tea is OwnableRoles, ERC20Votes, ERC20Burnable {
-    /* --------------------------------- Errors --------------------------------- */
-
-    error MaxSupplyReached();
-
+contract Tea is Ownable2Step, ERC20Votes, ERC20Burnable {
     /* -------------------------------- Constants ------------------------------- */
 
-    uint256 public constant MINTER_ROLE = 1 << 0; // 01 bitmap flag
-    uint256 public constant FACTORY_ROLE = 1 << 1; // 10 bitmap flag
-
-    uint256 public constant MAX_SUPPLY = 100_000_000_000 ether;
+    uint256 public constant INITIAL_SUPPLY = 100_000_000_000 ether;
 
     /* --------------------------------- Globals -------------------------------- */
 
+    /// @notice Total number of tokens minted, including burned tokens
     uint256 public totalMinted;
 
     /* ------------------------------- Constructor ------------------------------ */
 
-    constructor(address initialGovernor_) ERC20("Tea Token", "TEA") EIP712("Tea Token", "1") {
-        _initializeOwner(initialGovernor_);
+    constructor(address initialGovernor_)
+        ERC20("Tea Token", "TEA")
+        EIP712("Tea Token", "1")
+        Ownable(initialGovernor_)
+    {
+        totalMinted = INITIAL_SUPPLY;
+
+        _mint(initialGovernor_, INITIAL_SUPPLY);
     }
 
-    function _update(address from, address to, uint256 value) internal virtual override(ERC20Votes, ERC20) {
+    function _update(address from, address to, uint256 value) internal override(ERC20Votes, ERC20) {
         super._update(from, to, value);
     }
 
     /* ------------------------------- Mint / Burn ------------------------------ */
 
-    function mintTo(address account, uint256 value) public {
-        _checkOwnerOrRoles(MINTER_ROLE);
+    /// @notice Mints new tokens to `account` (only callable by the owner).
+    /// @dev Increments `totalMinted`.
+    /// @param account The address to receive minted tokens.
+    /// @param value   The amount of tokens to be minted.
+    function mintTo(address account, uint256 value) external {
+        _checkOwner();
 
-        // Cache.
-        uint256 newTotalMinted = totalMinted + value;
-        // Enforce cap on total minted.
-        if (newTotalMinted > MAX_SUPPLY) {
-            revert MaxSupplyReached();
-        }
+        totalMinted = totalMinted + value;
 
         _mint(account, value);
-
-        totalMinted = newTotalMinted;
-    }
-
-    function burnFrom(address account, uint256 value) public override {
-        if (account != msg.sender) _spendAllowance(account, msg.sender, value);
-        _burn(account, value);
-    }
-
-    /* ------------------------------- Role Admin ------------------------------- */
-
-    function addMinter(address toAdd) external {
-        _checkRoles(FACTORY_ROLE);
-
-        _grantRoles(toAdd, MINTER_ROLE);
-    }
-
-    function removeMinter(address toRemove) external {
-        _checkOwner();
-
-        _removeRoles(toRemove, MINTER_ROLE);
-    }
-
-    function addFactory(address toAdd) external {
-        _checkOwner();
-
-        _grantRoles(toAdd, FACTORY_ROLE);
-    }
-
-    function removeFactory(address toRemove) external {
-        _checkOwner();
-
-        _removeRoles(toRemove, FACTORY_ROLE);
     }
 }
