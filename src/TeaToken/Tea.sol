@@ -17,12 +17,13 @@ t@@                 @@   @@       @@@@@@@   @@@@@@                  @@@@#@@@@@@
 
 import { ERC20Votes } from "@openzeppelin/token/ERC20/extensions/ERC20Votes.sol";
 /* solhint-disable no-unused-import */
+import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 import { EIP712 } from "@openzeppelin/utils/cryptography/EIP712.sol";
 import { ERC20 } from "@openzeppelin/token/ERC20/ERC20.sol";
 import { Ownable } from "@openzeppelin/access/Ownable.sol";
 /* solhint-enable no-unused-import */
 import { Ownable2Step } from "@openzeppelin/access/Ownable2Step.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { ERC20Burnable } from "@openzeppelin/token/ERC20/extensions/ERC20Burnable.sol";
 
 contract Tea is Ownable2Step, ERC20Votes, ERC20Permit, ERC20Burnable {
@@ -39,7 +40,7 @@ contract Tea is Ownable2Step, ERC20Votes, ERC20Permit, ERC20Burnable {
 
     constructor(address initialGovernor_)
         ERC20("Tea Token", "TEA")
-        EIP712("Tea Token", "1")
+        ERC20Permit("Tea Token")
         Ownable(initialGovernor_)
     {
         totalMinted = INITIAL_SUPPLY;
@@ -78,7 +79,7 @@ contract Tea is Ownable2Step, ERC20Votes, ERC20Permit, ERC20Burnable {
      * - `spender` cannot be the zero address.
      */
     function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
-        _approve(_msgSender(), spender, _allowances[_msgSender()][spender] + addedValue);
+        _approve(_msgSender(), spender, allowance(_msgSender(), spender) + addedValue);
         return true;
     }
 
@@ -97,10 +98,14 @@ contract Tea is Ownable2Step, ERC20Votes, ERC20Permit, ERC20Burnable {
      * `subtractedValue`.
      */
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
-        uint256 currentAllowance = _allowances[_msgSender()][spender];
+        uint256 currentAllowance = allowance(_msgSender(), spender);
         require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
         _approve(_msgSender(), spender, currentAllowance - subtractedValue);
 
         return true;
+    }
+
+    function nonces(address owner) public view virtual override(ERC20Permit, Nonces) returns (uint256) {
+        return ERC20Permit.nonces(owner);
     }
 }
