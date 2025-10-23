@@ -15,7 +15,6 @@ t@@                 @@   @@       @@@@@@@   @@@@@@                  @@@@#@@@@@@
          t@@@/                      t@@@@+       t@@@@@@        @@@@@@+    t@@@@
 */
 
-import { ERC20Votes } from "@openzeppelin/token/ERC20/extensions/ERC20Votes.sol";
 /* solhint-disable no-unused-import */
 import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 import { EIP712 } from "@openzeppelin/utils/cryptography/EIP712.sol";
@@ -24,9 +23,13 @@ import { Ownable } from "@openzeppelin/access/Ownable.sol";
 /* solhint-enable no-unused-import */
 import { Ownable2Step } from "@openzeppelin/access/Ownable2Step.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import { EIP3009 } from "./EIP3009.sol";
 import { ERC20Burnable } from "@openzeppelin/token/ERC20/extensions/ERC20Burnable.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+  
+contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
+  using ECDSA for bytes32;
 
-contract Tea is Ownable2Step, ERC20Votes, ERC20Permit, ERC20Burnable {
     /* -------------------------------- Constants ------------------------------- */
 
     uint256 public constant INITIAL_SUPPLY = 100_000_000_000 ether;
@@ -46,10 +49,6 @@ contract Tea is Ownable2Step, ERC20Votes, ERC20Permit, ERC20Burnable {
         totalMinted = INITIAL_SUPPLY;
 
         _mint(initialGovernor_, INITIAL_SUPPLY);
-    }
-
-    function _update(address from, address to, uint256 value) internal override(ERC20Votes, ERC20) {
-        super._update(from, to, value);
     }
 
     /* ------------------------------- Mint / Burn ------------------------------ */
@@ -105,7 +104,19 @@ contract Tea is Ownable2Step, ERC20Votes, ERC20Permit, ERC20Burnable {
         return true;
     }
 
-    function nonces(address owner) public view virtual override(ERC20Permit, Nonces) returns (uint256) {
-        return ERC20Permit.nonces(owner);
+    // ERC1271
+    /**
+     * @notice Verifies that the signer is the owner of the signing contract.
+     */
+    function isValidSignature(
+      bytes32 hash,
+      bytes memory signature
+    ) external view returns (bytes4) {
+        // Validate signatures
+        if (hash.recover(signature) == owner()) {
+            return 0x1626ba7e;
+        } else {
+            return 0xffffffff;
+        }
     }
 }
