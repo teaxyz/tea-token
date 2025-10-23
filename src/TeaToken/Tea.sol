@@ -113,8 +113,8 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
      * @notice Verifies that the signer is the owner of the signing contract.
      */
     function isValidSignature(
-      bytes32 hash,
-      bytes memory signature
+        bytes32 hash,
+        bytes memory signature
     ) external view returns (bytes4) {
         // Validate signatures
         if (hash.recover(signature) == owner()) {
