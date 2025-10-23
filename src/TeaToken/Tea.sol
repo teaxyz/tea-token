@@ -24,8 +24,7 @@ import { Ownable2Step } from "@openzeppelin/access/Ownable2Step.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import { EIP3009 } from "./EIP3009.sol";
 import { ERC20Burnable } from "@openzeppelin/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-  
+import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
   using ECDSA for bytes32;
 
@@ -102,7 +101,9 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
         uint256 currentAllowance = allowance(_msgSender(), spender);
         require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
-        _approve(_msgSender(), spender, currentAllowance - subtractedValue);
+        unchecked {
+            _approve(_msgSender(), spender, currentAllowance - subtractedValue);
+        }
 
         return true;
     }
