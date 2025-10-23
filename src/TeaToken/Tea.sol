@@ -16,7 +16,6 @@ t@@                 @@   @@       @@@@@@@   @@@@@@                  @@@@#@@@@@@
 */
 
 /* solhint-disable no-unused-import */
-import { Nonces } from "@openzeppelin/contracts/utils/Nonces.sol";
 import { EIP712 } from "@openzeppelin/utils/cryptography/EIP712.sol";
 import { ERC20 } from "@openzeppelin/token/ERC20/ERC20.sol";
 import { Ownable } from "@openzeppelin/access/Ownable.sol";
@@ -29,6 +28,10 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
   
 contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
   using ECDSA for bytes32;
+
+    bytes4 public constant ERC1271_MAGIC_VALUE = 0x1626ba7e;
+
+    bytes4 constant ERC1271_INVALID_SIGNATURE = 0xffffffff;
 
     /* -------------------------------- Constants ------------------------------- */
 
@@ -114,9 +117,9 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
     ) external view returns (bytes4) {
         // Validate signatures
         if (hash.recover(signature) == owner()) {
-            return 0x1626ba7e;
+            return ERC1271_MAGIC_VALUE;
         } else {
-            return 0xffffffff;
+            return ERC1271_INVALID_SIGNATURE;
         }
     }
 }
