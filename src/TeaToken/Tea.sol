@@ -99,7 +99,9 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
     function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
         uint256 currentAllowance = allowance(_msgSender(), spender);
         require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
-        _approve(_msgSender(), spender, currentAllowance - subtractedValue);
+        unchecked {
+            _approve(_msgSender(), spender, currentAllowance - subtractedValue);
+        }
 
         return true;
     }
