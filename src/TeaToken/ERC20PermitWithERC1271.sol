@@ -61,7 +61,7 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
         address signer = ECDSA.recover(hash, v, r, s);
         if (signer != owner) {
             // try ERC1271
-            bytes memory signature = _rsvToSig(r,s,v);
+            bytes memory signature = rsvToSig(r,s,v);
             try IERC1271(owner).isValidSignature(hash, signature) returns (bytes4 magicValue) {
                   require(magicValue == IERC1271(owner).isValidSignature.selector , ERC2612InvalidSigner(signer, owner));
             } catch {
@@ -74,7 +74,7 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
     }
 
     	 /* Function work around for reassembly the signature  */
-    function _rsvToSig(bytes32 _a, bytes32 _b, uint8 _c) internal virtual returns (bytes memory){
+    function rsvToSig(bytes32 _a, bytes32 _b, uint8 _c) public view virtual returns (bytes memory){
         bytes memory bytesArray = new bytes(65);
         for (uint256 i; i < 32; i++) {
             bytesArray[i] = _a[i];

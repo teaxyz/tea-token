@@ -5,21 +5,26 @@ import { VmSafe } from "@prb/test/Vm.sol";
 import { PRBTest } from "@prb/test/PRBTest.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 import { IERC20Errors } from "@openzeppelin/interfaces/draft-IERC6093.sol";
+import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 
 import { Tea } from "../src/TeaToken/Tea.sol";
+import { ERC1271Wallet } from "./helpers/ERC1271Wallet.sol";
 import { TokenDeploy } from "../src/TeaToken/TokenDeploy.sol";
 import { MintManager } from "../src/TeaToken/MintManager.sol";
 import { DeterministicDeployer } from "../src/utils/DeterministicDeployer.sol";
+import { ERC20Permit } from "../src/TeaToken/ERC20PermitWithERC1271.sol";
 
 /* solhint-disable max-states-count */
 contract TeaTokenTest is PRBTest, StdCheats {
     Tea internal tea;
     TokenDeploy internal tokenDeploy;
     MintManager internal mintManager;
+    ERC1271Wallet internal smartWallet;
 
     VmSafe.Wallet internal initialGovernor = vm.createWallet("Initial Gov Account");
     VmSafe.Wallet internal alice = vm.createWallet("Alice Account");
     VmSafe.Wallet internal bob = vm.createWallet("Bob Account");
+    VmSafe.Wallet internal smartWalletOwner = vm.createWallet("SmartWallet Account");
 
     error OwnableUnauthorizedAccount(address account);
     error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed);
@@ -36,6 +41,8 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         tea = Tea(tokenDeploy.tea());
         mintManager = MintManager(tokenDeploy.mintManager());
+
+        smartWallet = new ERC1271Wallet(smartWalletOwner.addr);
     }
 
     function test_owner() public {
@@ -140,5 +147,57 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.prank(initialGovernor.addr);
         vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, address(0)));
         mintManager.mintTo(address(0), 100);
+    }
+
+    function test_ERC1271_permit_success() public {
+        // Arrange
+        bytes32 messageHash = keccak256(abi.encodePacked("Hello, Foundry!"));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, messageHash);
+
+        bytes memory signature = tea.rsvToSig(r,s,v);
+
+        bytes4 result = smartWallet.isValidSignature(messageHash, signature);       
+
+        // Assert
+        assertEq(result, IERC1271.isValidSignature.selector, "Valid signature should return the magic value");
+
+        vm.prank(smartWalletOwner.addr);
+        tea.permit(
+            smartWalletOwner.addr,
+            alice.addr,
+            1,
+            block.timestamp + 10000,
+            v,
+            r,
+            s
+        );
+
+        assertEq(tea.allowance(smartWalletOwner.addr, alice.addr), 1, "Permit should succeed");
+    }
+
+    function test_ERC1271_permit_attacker() public {
+        // Arrange
+        bytes32 messageHash = keccak256(abi.encodePacked("Hello, Foundry!"));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bob, messageHash);
+
+        bytes memory signature = tea.rsvToSig(r,s,v);
+
+        bytes4 result = smartWallet.isValidSignature(messageHash, signature);       
+
+        // Assert
+        assertEq(result, IERC1271.isValidSignature.selector, "Valid signature should return the magic value");
+
+        vm.prank(smartWalletOwner.addr);
+        vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612InvalidSigner.selector, bob.addr, smartWalletOwner.addr));
+        tea.permit(
+            smartWalletOwner.addr,
+            alice.addr,
+            1,
+            block.timestamp + 10000,
+            v,
+            r,
+            s
+        );
+
     }
 }
