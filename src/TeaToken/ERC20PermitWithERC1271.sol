@@ -67,6 +67,7 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
             } catch {
                 revert ERC2612InvalidSigner(signer, owner);
             }
+            revert ERC2612InvalidSigner(signer, owner);
         } 
 
         _approve(owner, spender, value);
