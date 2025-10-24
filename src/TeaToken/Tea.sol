@@ -21,7 +21,7 @@ import { ERC20 } from "@openzeppelin/token/ERC20/ERC20.sol";
 import { Ownable } from "@openzeppelin/access/Ownable.sol";
 /* solhint-enable no-unused-import */
 import { Ownable2Step } from "@openzeppelin/access/Ownable2Step.sol";
-import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import { ERC20Permit } from "./ERC20PermitWithERC1271.sol";
 import { EIP3009 } from "./EIP3009.sol";
 import { ERC20Burnable } from "@openzeppelin/token/ERC20/extensions/ERC20Burnable.sol";
 

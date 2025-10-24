@@ -25,7 +25,7 @@
 pragma solidity 0.8.26;
 
 import { ECRecover } from "./ECRecover.sol";
-import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import { ERC20Permit } from "./ERC20PermitWithERC1271.sol";
 
 abstract contract EIP3009 is ERC20Permit {
     // keccak256("TransferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)")
