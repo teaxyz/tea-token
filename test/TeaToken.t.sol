@@ -6,6 +6,7 @@ import { PRBTest } from "@prb/test/PRBTest.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 import { IERC20Errors } from "@openzeppelin/interfaces/draft-IERC6093.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 
 import { Tea } from "../src/TeaToken/Tea.sol";
 import { ERC1271Wallet } from "./helpers/ERC1271Wallet.sol";
@@ -42,7 +43,9 @@ contract TeaTokenTest is PRBTest, StdCheats {
         tea = Tea(tokenDeploy.tea());
         mintManager = MintManager(tokenDeploy.mintManager());
 
-        smartWallet = new ERC1271Wallet(smartWalletOwner.addr);
+        smartWallet = ERC1271Wallet(
+            DeterministicDeployer._deploy(salt, type(ERC1271Wallet).creationCode, abi.encode(smartWalletOwner.addr))
+        );
     }
 
     function test_owner() public {
@@ -149,17 +152,20 @@ contract TeaTokenTest is PRBTest, StdCheats {
         mintManager.mintTo(address(0), 100);
     }
 
-    function test_ERC1271_permit_success() public {
-        // Arrange
-        bytes32 messageHash = keccak256(abi.encodePacked("Hello, Foundry!"));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, messageHash);
+    function test_ERC1271_permit_standard_success() public {
+        // Create Hash
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), 
+                smartWalletOwner.addr, 
+                alice.addr, 1, 
+                tea.nonces(smartWalletOwner.addr), 
+                block.timestamp + 10000
+            ));
 
-        bytes memory signature = tea.rsvToSig(r,s,v);
+        bytes32 hash =  MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
 
-        bytes4 result = smartWallet.isValidSignature(messageHash, signature);       
-
-        // Assert
-        assertEq(result, IERC1271.isValidSignature.selector, "Valid signature should return the magic value");
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
 
         vm.prank(smartWalletOwner.addr);
         tea.permit(
@@ -175,20 +181,22 @@ contract TeaTokenTest is PRBTest, StdCheats {
         assertEq(tea.allowance(smartWalletOwner.addr, alice.addr), 1, "Permit should succeed");
     }
 
-    function test_ERC1271_permit_attacker() public {
-        // Arrange
-        bytes32 messageHash = keccak256(abi.encodePacked("Hello, Foundry!"));
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bob, messageHash);
+    function test_ERC1271_permit_standard_reuse_fail() public {
+        // Create Hash
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), 
+                smartWalletOwner.addr, 
+                alice.addr, 1, 
+                tea.nonces(smartWalletOwner.addr), 
+                block.timestamp + 10000
+            ));
 
-        bytes memory signature = tea.rsvToSig(r,s,v);
+        bytes32 hash =  MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
 
-        bytes4 result = smartWallet.isValidSignature(messageHash, signature);       
-
-        // Assert
-        assertEq(result, IERC1271.isValidSignature.selector, "Valid signature should return the magic value");
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
 
         vm.prank(smartWalletOwner.addr);
-        vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612InvalidSigner.selector, bob.addr, smartWalletOwner.addr));
         tea.permit(
             smartWalletOwner.addr,
             alice.addr,
@@ -199,5 +207,163 @@ contract TeaTokenTest is PRBTest, StdCheats {
             s
         );
 
+        assertEq(tea.allowance(smartWalletOwner.addr, alice.addr), 1, "Permit should succeed");
+        vm.expectRevert();
+        vm.prank(smartWalletOwner.addr);
+        tea.permit(
+            smartWalletOwner.addr,
+            alice.addr,
+            1,
+            block.timestamp + 10000,
+            v,
+            r,
+            s
+        );
+
+        assertEq(tea.allowance(smartWalletOwner.addr, alice.addr), 1, "Permit should Fail");
+    }
+
+    function test_ERC1271_permit_erc1271_success() public {
+        // Create Hash
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), 
+                address(smartWallet), 
+                alice.addr, 1, 
+                tea.nonces(address(smartWallet)), 
+                block.timestamp + 10000
+            ));
+
+        bytes32 hash =  MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
+
+        bytes memory signature = tea.rsvToSig(r,s,v);
+        bytes4 result = smartWallet.isValidSignature(hash, signature);       
+
+        // Assert its valid
+        assertEq(result, IERC1271.isValidSignature.selector, "Valid signature should return the magic value");
+
+        vm.prank(smartWalletOwner.addr);
+        tea.permit(
+            address(smartWallet),
+            alice.addr,
+            1,
+            block.timestamp + 10000,
+            v,
+            r,
+            s
+        );
+
+        assertEq(tea.allowance(address(smartWallet), alice.addr), 1, "Permit should succeed");
+    }   
+
+    function test_ERC1271_permit_erc1271_reuse_fail() public {
+        // Create Hash
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), 
+                address(smartWallet), 
+                alice.addr, 1, 
+                tea.nonces(address(smartWallet)), 
+                block.timestamp + 10000
+            ));
+
+        bytes32 hash =  MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
+
+        bytes memory signature = tea.rsvToSig(r,s,v);
+        bytes4 result = smartWallet.isValidSignature(hash, signature);       
+
+        // Assert its valid
+        assertEq(result, IERC1271.isValidSignature.selector, "Valid signature should return the magic value");
+
+        vm.prank(smartWalletOwner.addr);
+        tea.permit(
+            address(smartWallet),
+            alice.addr,
+            1,
+            block.timestamp + 10000,
+            v,
+            r,
+            s
+        );
+
+        assertEq(tea.allowance(address(smartWallet), alice.addr), 1, "Permit should succeed");
+
+        vm.prank(smartWalletOwner.addr);
+        vm.expectRevert();
+        tea.permit(
+            address(smartWallet),
+            alice.addr,
+            1,
+            block.timestamp + 10000,
+            v,
+            r,
+            s
+        );
+
+        assertEq(tea.allowance(address(smartWallet), alice.addr), 1, "Permit should fail");
+    }
+
+    function test_ERC1271_permit_erc1271_contract_does_not_exist() public {
+        // Create Hash
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), 
+                bob.addr, 
+                alice.addr, 1, 
+                tea.nonces(smartWalletOwner.addr), 
+                block.timestamp + 10000
+            ));
+
+        bytes32 hash =  MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
+
+        vm.prank(smartWalletOwner.addr);
+        vm.expectRevert();
+        tea.permit(
+            smartWalletOwner.addr,
+            alice.addr,
+            1,
+            block.timestamp + 10000,
+            v,
+            r,
+            s
+        );
+
+        assertEq(tea.allowance(smartWalletOwner.addr, alice.addr), 0, "Permit should fail");
+    }
+
+    function test_ERC1271_permit_erc1271_attacker() public {
+        // Create Hash
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), 
+                address(smartWallet), 
+                alice.addr, 1, 
+                tea.nonces(smartWalletOwner.addr), 
+                block.timestamp + 10000
+            ));
+
+        bytes32 hash =  MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bob, hash);
+
+        vm.prank(smartWalletOwner.addr);
+        vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612InvalidSigner.selector, bob.addr, address(smartWallet)));
+        tea.permit(
+            address(smartWallet),
+            alice.addr,
+            1,
+            block.timestamp + 10000,
+            v,
+            r,
+            s
+        );
+
+        assertEq(tea.allowance(address(smartWallet), alice.addr), 0, "Permit should fail");
     }
 }

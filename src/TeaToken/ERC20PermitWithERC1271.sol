@@ -63,11 +63,10 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
             // try ERC1271
             bytes memory signature = rsvToSig(r,s,v);
             try IERC1271(owner).isValidSignature(hash, signature) returns (bytes4 magicValue) {
-                  require(magicValue == IERC1271(owner).isValidSignature.selector , ERC2612InvalidSigner(signer, owner));
+                require(magicValue == IERC1271(owner).isValidSignature.selector , ERC2612InvalidSigner(signer, owner));
             } catch {
                 revert ERC2612InvalidSigner(signer, owner);
             }
-            revert ERC2612InvalidSigner(signer, owner);
         } 
 
         _approve(owner, spender, value);

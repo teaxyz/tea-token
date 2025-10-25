@@ -38,6 +38,5 @@
   wrap_comments = true
 
 [rpc_endpoints]
-
   localhost = "http://localhost:8545"
   mainnet = "https://eth-mainnet.g.alchemy.com/v2/${API_KEY_ALCHEMY}"
