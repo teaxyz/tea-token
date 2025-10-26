@@ -26,6 +26,7 @@ pragma solidity 0.8.26;
 
 import { ECRecover } from "./ECRecover.sol";
 import { ERC20Permit } from "./ERC20PermitWithERC1271.sol";
+import { IERC1271 } from "@openzeppelin/interfaces/IERC1271.sol";
 
 abstract contract EIP3009 is ERC20Permit {
     // keccak256("TransferWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)")
@@ -177,7 +178,7 @@ abstract contract EIP3009 is ERC20Permit {
             nonce
         );
         require(
-            recover(_domainSeparatorV4(), v, r, s, data) == authorizer,
+            _verifySignature(authorizer, _domainSeparatorV4(), v, r, s, data),
             _INVALID_SIGNATURE_ERROR
         );
 
@@ -211,7 +212,7 @@ abstract contract EIP3009 is ERC20Permit {
             nonce
         );
         require(
-            recover(_domainSeparatorV4(), v, r, s, data) == from,
+            _verifySignature(from, _domainSeparatorV4(), v, r, s, data),
             _INVALID_SIGNATURE_ERROR
         );
 
@@ -222,21 +223,23 @@ abstract contract EIP3009 is ERC20Permit {
     }
 
     /**
-     * @notice Recover signer's address from a EIP712 signature
+     * @notice Verify signer's address from a EIP712 signature with ERC-1271 support
+     * @param signer            Expected signer's address
      * @param domainSeparator   Domain separator
      * @param v                 v of the signature
      * @param r                 r of the signature
      * @param s                 s of the signature
      * @param typeHashAndData   Type hash concatenated with data
-     * @return Signer's address
+     * @return True if signature is valid
      */
-    function recover(
+    function _verifySignature(
+        address signer,
         bytes32 domainSeparator,
         uint8 v,
         bytes32 r,
         bytes32 s,
         bytes memory typeHashAndData
-    ) internal pure returns (address) {
+    ) internal view returns (bool) {
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
@@ -244,6 +247,23 @@ abstract contract EIP3009 is ERC20Permit {
                 keccak256(typeHashAndData)
             )
         );
-        return ECRecover.recover(digest, v, r, s);
+        
+        // Try ECDSA recovery for EOAs
+        address recovered = ECRecover.recover(digest, v, r, s);
+        if (recovered == signer) {
+            return true;
+        }
+        
+        // Try ERC-1271 for smart contract wallets
+        if (signer.code.length > 0) {
+            bytes memory signature = rsvToSig(r, s, v);
+            try IERC1271(signer).isValidSignature(digest, signature) returns (bytes4 magicValue) {
+                return magicValue == IERC1271.isValidSignature.selector;
+            } catch {
+                return false;
+            }
+        }
+        
+        return false;
     }
 }
