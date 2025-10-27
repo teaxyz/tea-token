@@ -18,6 +18,7 @@ t@@                 @@   @@       @@@@@@@   @@@@@@                  @@@@#@@@@@@
 /* solhint-disable no-unused-import */
 import { EIP712 } from "@openzeppelin/utils/cryptography/EIP712.sol";
 import { ERC20 } from "@openzeppelin/token/ERC20/ERC20.sol";
+import { IERC20 } from "@openzeppelin/interfaces/IERC20.sol";
 import { Ownable } from "@openzeppelin/access/Ownable.sol";
 /* solhint-enable no-unused-import */
 import { Ownable2Step } from "@openzeppelin/access/Ownable2Step.sol";
@@ -33,6 +34,11 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
     /* -------------------------------- Constants ------------------------------- */
 
     uint256 public constant INITIAL_SUPPLY = 100_000_000_000 ether;
+
+    /**
+     * @dev Invalid signature for authorization.
+     */
+    error CannotRescueOwnTokens();
 
     /* --------------------------------- Globals -------------------------------- */
 
@@ -104,5 +110,39 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
         }
 
         return true;
+    }
+
+    /**
+     * @dev Allows the contract owner to rescue any ERC-20 tokens
+     * that were accidentally sent to this contract.
+     * @param tokenAddress The address of the ERC-20 token to rescue.
+     * @param to The address to which the rescued tokens will be sent.
+     * @return the amount transfered
+     */
+    function rescueToken(address tokenAddress, address to) public virtual onlyOwner returns(uint256) {
+        // Require that the token address is not the contract's own token.
+        require(tokenAddress != address(this), CannotRescueOwnTokens());
+
+        IERC20 token = IERC20(tokenAddress);
+        uint256 balance = token.balanceOf(address(this));
+
+        // Transfer the tokens from this contract to the specified address.
+        token.transfer(to, balance);
+        
+        return balance;
+    }
+
+    /**
+     * @dev Allows the contract owner to rescue any ETH
+     * that was accidentally sent to this contract.
+     * @param to The address to which the rescued ETH will be sent.
+     * @return the amount transfered
+     */
+    function rescueEth(address to) public virtual onlyOwner returns (uint256) {
+        uint256 balance = address(this).balance;
+
+        payable(to).transfer(balance);
+
+        return balance;
     }
 }

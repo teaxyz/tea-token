@@ -287,7 +287,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create Hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 smartWalletOwner.addr,
                 alice.addr, 1,
                 tea.nonces(smartWalletOwner.addr),
@@ -316,7 +316,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create Hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 smartWalletOwner.addr,
                 alice.addr, 1,
                 tea.nonces(smartWalletOwner.addr),
@@ -358,7 +358,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create Hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 address(smartWallet),
                 alice.addr, 1,
                 tea.nonces(address(smartWallet)),
@@ -396,7 +396,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create Hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 address(smartWallet),
                 alice.addr, 1,
                 tea.nonces(address(smartWallet)),
@@ -447,7 +447,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create Hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 bob.addr,
                 alice.addr, 1,
                 tea.nonces(smartWalletOwner.addr),
@@ -477,7 +477,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create Hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 address(smartWallet),
                 alice.addr, 1,
                 tea.nonces(smartWalletOwner.addr),
@@ -512,7 +512,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 alice.addr,
                 bob.addr,
                 100,
@@ -534,7 +534,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 alice.addr,
                 bob.addr,
                 100,
@@ -558,7 +558,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 alice.addr,
                 bob.addr,
                 maxValue,
@@ -585,7 +585,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         uint256 deadline = block.timestamp + 1000;
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 alice.addr,
                 bob.addr,
                 500,
@@ -613,7 +613,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 alice.addr,
                 bob.addr,
                 100,
@@ -1036,7 +1036,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create permit digest
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 address(passkeyWallet),
                 alice.addr,
                 100,
@@ -1221,7 +1221,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create permit digest
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 address(passkeyWallet),
                 alice.addr,
                 100,
@@ -1278,7 +1278,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create a permit for wallet1
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                tea.PERMIT_TYPEHASH(),
                 address(wallet1), // wallet1 as owner
                 bob.addr,
                 100,

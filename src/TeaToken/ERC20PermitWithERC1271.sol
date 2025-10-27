@@ -9,6 +9,24 @@ import {ECDSA} from "@openzeppelin/utils/cryptography/ECDSA.sol";
 import {EIP712} from "@openzeppelin/utils/cryptography/EIP712.sol";
 import {Nonces} from "@openzeppelin/utils/Nonces.sol";
 import {IERC1271} from "@openzeppelin/interfaces/IERC1271.sol";
+
+/**
+ * `Permit` is the struct identifier name.
+ * - `address` is the atomic type of named `owner`.
+ * - `address` is the atomic type of named `spender`.
+ * - `uint256` is the atomic type of named `value`.
+ * - `uint256` is the atomic type of the randomly 
+ *    generated value during the signing process named `nonce`.
+ * - `uint256` is the atomic type of named `deadline`
+ */
+struct Permit {
+    address owner;
+    address spender;
+    uint256 value;
+    uint256 nonce;
+    uint256 deadline;
+}
+
 /**
  * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
  * https://eips.ethereum.org/EIPS/eip-2612[ERC-2612].
@@ -18,7 +36,7 @@ import {IERC1271} from "@openzeppelin/interfaces/IERC1271.sol";
  * need to send a transaction, and thus is not required to hold Ether at all.
  */
 abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
-    bytes32 private constant PERMIT_TYPEHASH =
+    bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
     /**
