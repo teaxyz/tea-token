@@ -19,14 +19,16 @@ t@@                 @@   @@       @@@@@@@   @@@@@@                  @@@@#@@@@@@
 import { EIP712 } from "@openzeppelin/utils/cryptography/EIP712.sol";
 import { ERC20 } from "@openzeppelin/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/interfaces/IERC20.sol";
+import { IERC721 } from "@openzeppelin/interfaces/IERC721.sol";
 import { Ownable } from "@openzeppelin/access/Ownable.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 /* solhint-enable no-unused-import */
 import { Ownable2Step } from "@openzeppelin/access/Ownable2Step.sol";
 import { ERC20Permit } from "./ERC20PermitWithERC1271.sol";
 import { EIP3009 } from "./EIP3009.sol";
 import { ERC20Burnable } from "@openzeppelin/token/ERC20/extensions/ERC20Burnable.sol";
 
-contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
+contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
     bytes4 public constant ERC1271_MAGIC_VALUE = 0x1626ba7e;
 
     bytes4 constant ERC1271_INVALID_SIGNATURE = 0xffffffff;
@@ -39,6 +41,10 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
      * @dev Invalid signature for authorization.
      */
     error CannotRecoverOwnTokens();
+
+    event RecoveredToken(address indexed token, address indexed to, uint256 amount);
+    event RecoveredNFT(address indexed token, address indexed to, uint256 tokenId);
+    event RecoveredEth(address indexed to, uint256 amount);
 
     /* --------------------------------- Globals -------------------------------- */
 
@@ -116,10 +122,8 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
      * @dev Allows the contract owner to recover any ERC-20 tokens
      * that were accidentally sent to this contract.
      * @param tokenAddress The address of the ERC-20 token to recover.
-     * @param to The address to which the recoverd tokens will be sent.
-     * @return the amount transfered
      */
-    function recoverToken(address tokenAddress, address to) public virtual onlyOwner returns(uint256) {
+    function recoverToken(address tokenAddress) public virtual onlyOwner nonReentrant {
         // Require that the token address is not the contract's own token.
         require(tokenAddress != address(this), CannotRecoverOwnTokens());
 
@@ -127,22 +131,40 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
         uint256 balance = token.balanceOf(address(this));
 
         // Transfer the tokens from this contract to the specified address.
-        token.transfer(to, balance);
+        token.transfer(owner(), balance);
         
-        return balance;
+        emit RecoveredToken(tokenAddress, owner(), balance);
+    }
+    
+
+    /**
+     * @dev Allows the contract owner to recover any ERC-20 tokens
+     * that were accidentally sent to this contract.
+     * @param tokenAddress The address of the ERC-20 token to recover.
+     * @param tokenId The address to which the recoverd tokens will be sent.
+     */
+    function recoverNFT(
+        address tokenAddress,
+        uint256 tokenId
+    ) public virtual onlyOwner nonReentrant {
+        // Use the IERC721 interface to safely transfer the NFT from this contract
+        IERC721 nft = IERC721(tokenAddress);
+        
+        // This line attempts the safe transfer of the NFT
+        nft.safeTransferFrom(address(this), owner(), tokenId);
+
+        emit RecoveredNFT(tokenAddress, owner(), tokenId);
     }
 
     /**
      * @dev Allows the contract owner to recover any ETH
      * that was accidentally sent to this contract.
-     * @param to The address to which the recoverd ETH will be sent.
-     * @return the amount transfered
      */
-    function recoverEth(address to) public virtual onlyOwner returns (uint256) {
+    function recoverEth() public virtual onlyOwner nonReentrant {
         uint256 balance = address(this).balance;
 
-        payable(to).transfer(balance);
+        payable(owner()).transfer(balance);
 
-        return balance;
+        emit RecoveredEth(owner(), balance);
     }
 }
