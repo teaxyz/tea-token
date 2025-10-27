@@ -173,6 +173,116 @@ contract TeaTokenTest is PRBTest, StdCheats {
         mintManager.mintTo(address(0), 100);
     }
 
+    // ========================================
+    // Allowance Hygiene Tests (increaseAllowance/decreaseAllowance)
+    // ========================================
+
+    function test_increaseAllowance_fromZero() public {
+        // Start with zero allowance
+        assertEq(tea.allowance(alice.addr, bob.addr), 0);
+
+        // Increase from zero
+        vm.prank(alice.addr);
+        bool success = tea.increaseAllowance(bob.addr, 100);
+
+        assertTrue(success);
+        assertEq(tea.allowance(alice.addr, bob.addr), 100);
+    }
+
+    function test_increaseAllowance_fromExisting() public {
+        // Set initial allowance
+        vm.prank(alice.addr);
+        tea.approve(bob.addr, 50);
+        assertEq(tea.allowance(alice.addr, bob.addr), 50);
+
+        // Increase allowance
+        vm.prank(alice.addr);
+        bool success = tea.increaseAllowance(bob.addr, 75);
+
+        assertTrue(success);
+        assertEq(tea.allowance(alice.addr, bob.addr), 125);
+    }
+
+    function test_increaseAllowance_overflow() public {
+        // Set allowance near max
+        vm.prank(alice.addr);
+        tea.approve(bob.addr, type(uint256).max - 50);
+
+        // Try to increase beyond max - should overflow/revert
+        vm.prank(alice.addr);
+        vm.expectRevert();
+        tea.increaseAllowance(bob.addr, 100);
+    }
+
+    function test_decreaseAllowance_toZero() public {
+        // Set initial allowance
+        vm.prank(alice.addr);
+        tea.approve(bob.addr, 100);
+
+        // Decrease to zero
+        vm.prank(alice.addr);
+        bool success = tea.decreaseAllowance(bob.addr, 100);
+
+        assertTrue(success);
+        assertEq(tea.allowance(alice.addr, bob.addr), 0);
+    }
+
+    function test_decreaseAllowance_partial() public {
+        // Set initial allowance
+        vm.prank(alice.addr);
+        tea.approve(bob.addr, 100);
+
+        // Decrease partially
+        vm.prank(alice.addr);
+        bool success = tea.decreaseAllowance(bob.addr, 60);
+
+        assertTrue(success);
+        assertEq(tea.allowance(alice.addr, bob.addr), 40);
+    }
+
+    function test_decreaseAllowance_underflow_reverts() public {
+        // Set initial allowance
+        vm.prank(alice.addr);
+        tea.approve(bob.addr, 50);
+
+        // Try to decrease more than available - should revert
+        vm.prank(alice.addr);
+        vm.expectRevert("ERC20: decreased allowance below zero");
+        tea.decreaseAllowance(bob.addr, 100);
+
+        // Allowance should remain unchanged
+        assertEq(tea.allowance(alice.addr, bob.addr), 50);
+    }
+
+    function test_decreaseAllowance_fromZero_reverts() public {
+        // No allowance set
+        assertEq(tea.allowance(alice.addr, bob.addr), 0);
+
+        // Try to decrease from zero - should revert
+        vm.prank(alice.addr);
+        vm.expectRevert("ERC20: decreased allowance below zero");
+        tea.decreaseAllowance(bob.addr, 1);
+    }
+
+    function test_allowance_zeroAddress_reverts() public {
+        // Try to increase allowance for zero address - _approve will revert
+        vm.prank(alice.addr);
+        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidSpender.selector, address(0)));
+        tea.increaseAllowance(address(0), 100);
+
+        // For decreaseAllowance with zero allowance, it reverts with underflow error first
+        vm.prank(alice.addr);
+        vm.expectRevert("ERC20: decreased allowance below zero");
+        tea.decreaseAllowance(address(0), 100);
+        
+        // But if we have allowance set to zero address (via approve), decrease should work
+        // Note: OpenZeppelin's _approve will revert on zero address, so we can't test this path
+    }
+
+    // ========================================
+    // ERC-2612 Permit Tests
+    // ========================================
+
     function test_ERC1271_permit_standard_success() public {
         // Create Hash
         bytes32 messageHash = keccak256(
@@ -391,6 +501,132 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         assertEq(tea.allowance(address(smartWallet), alice.addr), 0, "Permit should fail");
+    }
+
+    // ========================================
+    // Permit Edge Case Tests
+    // ========================================
+
+    function test_permit_expiredDeadline_reverts() public {
+        uint256 expiredDeadline = block.timestamp - 1; // 1 second in the past
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                alice.addr,
+                bob.addr,
+                100,
+                tea.nonces(alice.addr),
+                expiredDeadline
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        // Should revert with ERC2612ExpiredSignature
+        vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612ExpiredSignature.selector, expiredDeadline));
+        tea.permit(alice.addr, bob.addr, 100, expiredDeadline, v, r, s);
+    }
+
+    function test_permit_deadlineBoundary_exactTimestamp() public {
+        // Deadline exactly at current timestamp should succeed
+        uint256 deadline = block.timestamp;
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                alice.addr,
+                bob.addr,
+                100,
+                tea.nonces(alice.addr),
+                deadline
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        // Should succeed (deadline check is >, not >=)
+        tea.permit(alice.addr, bob.addr, 100, deadline, v, r, s);
+
+        assertEq(tea.allowance(alice.addr, bob.addr), 100);
+    }
+
+    function test_permit_maxUint256Value() public {
+        // Test permit with max uint256 value
+        uint256 maxValue = type(uint256).max;
+        uint256 deadline = block.timestamp + 1000;
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                alice.addr,
+                bob.addr,
+                maxValue,
+                tea.nonces(alice.addr),
+                deadline
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        tea.permit(alice.addr, bob.addr, maxValue, deadline, v, r, s);
+
+        assertEq(tea.allowance(alice.addr, bob.addr), maxValue);
+    }
+
+    function test_permit_integrationWithTransferFrom() public {
+        vm.warp(block.timestamp + 365 days);
+
+        // Mint tokens to alice
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 1000);
+
+        // Alice permits bob to spend 500 tokens
+        uint256 deadline = block.timestamp + 1000;
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                alice.addr,
+                bob.addr,
+                500,
+                tea.nonces(alice.addr),
+                deadline
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        tea.permit(alice.addr, bob.addr, 500, deadline, v, r, s);
+
+        // Bob can now transfer from alice
+        vm.prank(bob.addr);
+        tea.transferFrom(alice.addr, bob.addr, 300);
+
+        assertEq(tea.balanceOf(alice.addr), 700);
+        assertEq(tea.balanceOf(bob.addr), 300);
+        assertEq(tea.allowance(alice.addr, bob.addr), 200); // 500 - 300 = 200 remaining
+    }
+
+    function test_permit_invalidNonce_reverts() public {
+        uint256 deadline = block.timestamp + 1000;
+        uint256 wrongNonce = tea.nonces(alice.addr) + 1; // Wrong nonce
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                alice.addr,
+                bob.addr,
+                100,
+                wrongNonce,
+                deadline
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        // Should revert with invalid signer
+        vm.expectRevert();
+        tea.permit(alice.addr, bob.addr, 100, deadline, v, r, s);
     }
 
     // ========== EIP-3009 Tests ==========
