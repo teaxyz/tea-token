@@ -38,7 +38,7 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
     /**
      * @dev Invalid signature for authorization.
      */
-    error CannotRescueOwnTokens();
+    error CannotRecoverOwnTokens();
 
     /* --------------------------------- Globals -------------------------------- */
 
@@ -113,15 +113,15 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
     }
 
     /**
-     * @dev Allows the contract owner to rescue any ERC-20 tokens
+     * @dev Allows the contract owner to recover any ERC-20 tokens
      * that were accidentally sent to this contract.
-     * @param tokenAddress The address of the ERC-20 token to rescue.
-     * @param to The address to which the rescued tokens will be sent.
+     * @param tokenAddress The address of the ERC-20 token to recover.
+     * @param to The address to which the recoverd tokens will be sent.
      * @return the amount transfered
      */
-    function rescueToken(address tokenAddress, address to) public virtual onlyOwner returns(uint256) {
+    function recoverToken(address tokenAddress, address to) public virtual onlyOwner returns(uint256) {
         // Require that the token address is not the contract's own token.
-        require(tokenAddress != address(this), CannotRescueOwnTokens());
+        require(tokenAddress != address(this), CannotRecoverOwnTokens());
 
         IERC20 token = IERC20(tokenAddress);
         uint256 balance = token.balanceOf(address(this));
@@ -133,12 +133,12 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable {
     }
 
     /**
-     * @dev Allows the contract owner to rescue any ETH
+     * @dev Allows the contract owner to recover any ETH
      * that was accidentally sent to this contract.
-     * @param to The address to which the rescued ETH will be sent.
+     * @param to The address to which the recoverd ETH will be sent.
      * @return the amount transfered
      */
-    function rescueEth(address to) public virtual onlyOwner returns (uint256) {
+    function recoverEth(address to) public virtual onlyOwner returns (uint256) {
         uint256 balance = address(this).balance;
 
         payable(to).transfer(balance);
