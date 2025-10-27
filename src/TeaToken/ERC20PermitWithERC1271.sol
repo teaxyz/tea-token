@@ -3,12 +3,12 @@
 
 pragma solidity ^0.8.20;
 
-import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import {Nonces} from "@openzeppelin/contracts/utils/Nonces.sol";
-import {IERC1271} from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import {IERC20Permit} from "@openzeppelin/token/ERC20/extensions/IERC20Permit.sol";
+import {ERC20} from "@openzeppelin/token/ERC20/ERC20.sol";
+import {ECDSA} from "@openzeppelin/utils/cryptography/ECDSA.sol";
+import {EIP712} from "@openzeppelin/utils/cryptography/EIP712.sol";
+import {Nonces} from "@openzeppelin/utils/Nonces.sol";
+import {IERC1271} from "@openzeppelin/interfaces/IERC1271.sol";
 /**
  * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
  * https://eips.ethereum.org/EIPS/eip-2612[ERC-2612].
@@ -50,35 +50,95 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
         bytes32 r,
         bytes32 s
     ) public virtual {
+        bytes memory signature = rsvToSig(r, s, v);
+        permit(owner, spender, value, deadline, signature);
+    }
+
+    /**
+     * @notice Permit with bytes signature (for 7702/passkey/ERC-1271 compatibility)
+     * @param owner         Token owner's address
+     * @param spender       Spender's address
+     * @param value         Amount to approve
+     * @param deadline      Signature expiry timestamp
+     * @param signature     Signature bytes (can be 65-byte ECDSA or arbitrary ERC-1271)
+     */
+    function permit(
+        address owner,
+        address spender,
+        uint256 value,
+        uint256 deadline,
+        bytes memory signature
+    ) public virtual {
         if (block.timestamp > deadline) {
             revert ERC2612ExpiredSignature(deadline);
         }
 
         bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline));
-
-        bytes32 hash = _hashTypedDataV4(structHash);
+        bytes32 digest = _hashTypedDataV4(structHash);
         
-        address signer = ECDSA.recover(hash, v, r, s);
-        if (signer != owner) {
-            // try ERC1271
-            bytes memory signature = rsvToSig(r,s,v);
-            try IERC1271(owner).isValidSignature(hash, signature) returns (bytes4 magicValue) {
-                require(magicValue == IERC1271(owner).isValidSignature.selector , ERC2612InvalidSigner(signer, owner));
-            } catch {
-                revert ERC2612InvalidSigner(signer, owner);
-            }
-        } 
+        (bool valid, address recovered) = _verifySignature(owner, digest, signature);
+        if (!valid) {
+            revert ERC2612InvalidSigner(recovered, owner);
+        }
 
         _approve(owner, spender, value);
     }
 
-    	 /* Function work around for reassembly the signature  */
-    function rsvToSig(bytes32 _a, bytes32 _b, uint8 _c) public view virtual returns (bytes memory){
+    /**
+     * @notice Internal signature verification with ERC-1271 support
+     * @param signer        Expected signer address
+     * @param digest        EIP-712 digest to verify
+     * @param signature     Signature bytes
+     * @return valid        True if signature is valid
+     * @return recovered    Recovered address (if ECDSA) or zero address (if ERC-1271)
+     */
+    function _verifySignature(
+        address signer,
+        bytes32 digest,
+        bytes memory signature
+    ) internal view returns (bool valid, address recovered) {
+        // Try ECDSA recovery for EOAs
+        ECDSA.RecoverError err;
+        (recovered, err,) = ECDSA.tryRecover(digest, signature);
+        if (err == ECDSA.RecoverError.NoError && recovered == signer) {
+            return (true, recovered);
+        }
+        
+        // Try ERC-1271 for smart contract wallets
+        if (signer.code.length > 0) {
+            try IERC1271(signer).isValidSignature(digest, signature) returns (bytes4 magicValue) {
+                if (magicValue == IERC1271.isValidSignature.selector) {
+                    return (true, address(0));
+                }
+            } catch {
+                return (false, recovered);
+            }
+        }
+        
+        return (false, recovered);
+    }
+
+    /**
+     * @notice Internal signature verification (bool-only return for internal use)
+     */
+    function _verifySig(
+        address signer,
+        bytes32 digest,
+        bytes memory signature
+    ) internal view returns (bool) {
+        (bool valid,) = _verifySignature(signer, digest, signature);
+        return valid;
+    }
+
+    /**
+     * @notice Internal helper to convert r,s,v to 65-byte signature
+     */
+    function rsvToSig(bytes32 _a, bytes32 _b, uint8 _c) internal pure returns (bytes memory) {
         bytes memory bytesArray = new bytes(65);
         for (uint256 i; i < 32; i++) {
             bytesArray[i] = _a[i];
         }
-        for (uint256 i=32; i < 64; i++) {
+        for (uint256 i = 32; i < 64; i++) {
             bytesArray[i] = _b[i-32];
         }
         bytesArray[64] = bytes1(_c);

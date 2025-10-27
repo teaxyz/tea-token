@@ -96,7 +96,30 @@ abstract contract EIP3009 is ERC20Permit {
         bytes32 r,
         bytes32 s
     ) external {
-        _transferWithAuthorization(
+        bytes memory signature = rsvToSig(r, s, v);
+        transferWithAuthorization(from, to, value, validAfter, validBefore, nonce, signature);
+    }
+
+    /**
+     * @notice Execute a transfer with a signed authorization (bytes signature for 7702/passkey)
+     * @param from          Payer's address (Authorizer)
+     * @param to            Payee's address
+     * @param value         Amount to be transferred
+     * @param validAfter    The time after which this is valid (unix time)
+     * @param validBefore   The time before which this is valid (unix time)
+     * @param nonce         Unique nonce
+     * @param signature     Signature bytes
+     */
+    function transferWithAuthorization(
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes memory signature
+    ) public {
+        _transferWithAuthorizationBytes(
             TRANSFER_WITH_AUTHORIZATION_TYPEHASH,
             from,
             to,
@@ -104,9 +127,7 @@ abstract contract EIP3009 is ERC20Permit {
             validAfter,
             validBefore,
             nonce,
-            v,
-            r,
-            s
+            signature
         );
     }
 
@@ -136,9 +157,32 @@ abstract contract EIP3009 is ERC20Permit {
         bytes32 r,
         bytes32 s
     ) external {
+        bytes memory signature = rsvToSig(r, s, v);
+        receiveWithAuthorization(from, to, value, validAfter, validBefore, nonce, signature);
+    }
+
+    /**
+     * @notice Receive a transfer with a signed authorization (bytes signature for 7702/passkey)
+     * @param from          Payer's address (Authorizer)
+     * @param to            Payee's address
+     * @param value         Amount to be transferred
+     * @param validAfter    The time after which this is valid (unix time)
+     * @param validBefore   The time before which this is valid (unix time)
+     * @param nonce         Unique nonce
+     * @param signature     Signature bytes
+     */
+    function receiveWithAuthorization(
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes memory signature
+    ) public {
         require(to == msg.sender, "EIP3009: caller must be the payee");
 
-        _transferWithAuthorization(
+        _transferWithAuthorizationBytes(
             RECEIVE_WITH_AUTHORIZATION_TYPEHASH,
             from,
             to,
@@ -146,9 +190,7 @@ abstract contract EIP3009 is ERC20Permit {
             validAfter,
             validBefore,
             nonce,
-            v,
-            r,
-            s
+            signature
         );
     }
 
@@ -167,18 +209,41 @@ abstract contract EIP3009 is ERC20Permit {
         bytes32 r,
         bytes32 s
     ) external {
+        bytes memory signature = rsvToSig(r, s, v);
+        cancelAuthorization(authorizer, nonce, signature);
+    }
+
+    /**
+     * @notice Cancel an authorization (bytes signature for 7702/passkey)
+     * @param authorizer    Authorizer's address
+     * @param nonce         Nonce of the authorization
+     * @param signature     Signature bytes
+     */
+    function cancelAuthorization(
+        address authorizer,
+        bytes32 nonce,
+        bytes memory signature
+    ) public {
         require(
             !_authorizationStates[authorizer][nonce],
             _AUTHORIZATION_USED_ERROR
         );
 
-        bytes memory data = abi.encode(
+        bytes32 structHash = keccak256(abi.encode(
             CANCEL_AUTHORIZATION_TYPEHASH,
             authorizer,
             nonce
+        ));
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                _domainSeparatorV4(),
+                structHash
+            )
         );
+        
         require(
-            _verifySignature(authorizer, _domainSeparatorV4(), v, r, s, data),
+            _verifySig(authorizer, digest, signature),
             _INVALID_SIGNATURE_ERROR
         );
 
@@ -198,11 +263,25 @@ abstract contract EIP3009 is ERC20Permit {
         bytes32 r,
         bytes32 s
     ) internal {
+        bytes memory signature = rsvToSig(r, s, v);
+        _transferWithAuthorizationBytes(typeHash, from, to, value, validAfter, validBefore, nonce, signature);
+    }
+
+    function _transferWithAuthorizationBytes(
+        bytes32 typeHash,
+        address from,
+        address to,
+        uint256 value,
+        uint256 validAfter,
+        uint256 validBefore,
+        bytes32 nonce,
+        bytes memory signature
+    ) internal {
         require(block.timestamp > validAfter, "EIP3009: authorization is not yet valid");
         require(block.timestamp < validBefore, "EIP3009: authorization is expired");
         require(!_authorizationStates[from][nonce], _AUTHORIZATION_USED_ERROR);
 
-        bytes memory data = abi.encode(
+        bytes32 structHash = keccak256(abi.encode(
             typeHash,
             from,
             to,
@@ -210,9 +289,17 @@ abstract contract EIP3009 is ERC20Permit {
             validAfter,
             validBefore,
             nonce
+        ));
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                _domainSeparatorV4(),
+                structHash
+            )
         );
+        
         require(
-            _verifySignature(from, _domainSeparatorV4(), v, r, s, data),
+            _verifySig(from, digest, signature),
             _INVALID_SIGNATURE_ERROR
         );
 
@@ -220,50 +307,5 @@ abstract contract EIP3009 is ERC20Permit {
         emit AuthorizationUsed(from, nonce);
 
         _transfer(from, to, value);
-    }
-
-    /**
-     * @notice Verify signer's address from a EIP712 signature with ERC-1271 support
-     * @param signer            Expected signer's address
-     * @param domainSeparator   Domain separator
-     * @param v                 v of the signature
-     * @param r                 r of the signature
-     * @param s                 s of the signature
-     * @param typeHashAndData   Type hash concatenated with data
-     * @return True if signature is valid
-     */
-    function _verifySignature(
-        address signer,
-        bytes32 domainSeparator,
-        uint8 v,
-        bytes32 r,
-        bytes32 s,
-        bytes memory typeHashAndData
-    ) internal view returns (bool) {
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                domainSeparator,
-                keccak256(typeHashAndData)
-            )
-        );
-        
-        // Try ECDSA recovery for EOAs
-        address recovered = ECRecover.recover(digest, v, r, s);
-        if (recovered == signer) {
-            return true;
-        }
-        
-        // Try ERC-1271 for smart contract wallets
-        if (signer.code.length > 0) {
-            bytes memory signature = rsvToSig(r, s, v);
-            try IERC1271(signer).isValidSignature(digest, signature) returns (bytes4 magicValue) {
-                return magicValue == IERC1271.isValidSignature.selector;
-            } catch {
-                return false;
-            }
-        }
-        
-        return false;
     }
 }
