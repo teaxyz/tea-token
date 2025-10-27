@@ -5,8 +5,8 @@ import { VmSafe } from "@prb/test/Vm.sol";
 import { PRBTest } from "@prb/test/PRBTest.sol";
 import { StdCheats } from "forge-std/StdCheats.sol";
 import { IERC20Errors } from "@openzeppelin/interfaces/draft-IERC6093.sol";
-import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
+import { IERC1271 } from "@openzeppelin/interfaces/IERC1271.sol";
+import {MessageHashUtils} from "@openzeppelin/utils/cryptography/MessageHashUtils.sol";
 
 import { Tea } from "../src/TeaToken/Tea.sol";
 import { ERC1271Wallet } from "./helpers/ERC1271Wallet.sol";
@@ -29,6 +29,19 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
     error OwnableUnauthorizedAccount(address account);
     error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed);
+
+    // Helper to pack r,s,v into bytes signature
+    function packSignature(bytes32 r, bytes32 s, uint8 v) internal pure returns (bytes memory) {
+        bytes memory sig = new bytes(65);
+        for (uint256 i; i < 32; i++) {
+            sig[i] = r[i];
+        }
+        for (uint256 i = 32; i < 64; i++) {
+            sig[i] = s[i-32];
+        }
+        sig[64] = bytes1(v);
+        return sig;
+    }
 
     function setUp() public virtual {
         vm.createSelectFork({ urlOrAlias: "mainnet", blockNumber: 20_456_340 });
@@ -156,10 +169,10 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create Hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), 
-                smartWalletOwner.addr, 
-                alice.addr, 1, 
-                tea.nonces(smartWalletOwner.addr), 
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                smartWalletOwner.addr,
+                alice.addr, 1,
+                tea.nonces(smartWalletOwner.addr),
                 block.timestamp + 10000
             ));
 
@@ -185,10 +198,10 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create Hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), 
-                smartWalletOwner.addr, 
-                alice.addr, 1, 
-                tea.nonces(smartWalletOwner.addr), 
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                smartWalletOwner.addr,
+                alice.addr, 1,
+                tea.nonces(smartWalletOwner.addr),
                 block.timestamp + 10000
             ));
 
@@ -227,10 +240,10 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create Hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), 
-                address(smartWallet), 
-                alice.addr, 1, 
-                tea.nonces(address(smartWallet)), 
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                address(smartWallet),
+                alice.addr, 1,
+                tea.nonces(address(smartWallet)),
                 block.timestamp + 10000
             ));
 
@@ -238,8 +251,8 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
 
-        bytes memory signature = tea.rsvToSig(r,s,v);
-        bytes4 result = smartWallet.isValidSignature(hash, signature);       
+        bytes memory signature = packSignature(r, s, v);
+        bytes4 result = smartWallet.isValidSignature(hash, signature);
 
         // Assert its valid
         assertEq(result, IERC1271.isValidSignature.selector, "Valid signature should return the magic value");
@@ -256,16 +269,16 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         assertEq(tea.allowance(address(smartWallet), alice.addr), 1, "Permit should succeed");
-    }   
+    }
 
     function test_ERC1271_permit_erc1271_reuse_fail() public {
         // Create Hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), 
-                address(smartWallet), 
-                alice.addr, 1, 
-                tea.nonces(address(smartWallet)), 
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                address(smartWallet),
+                alice.addr, 1,
+                tea.nonces(address(smartWallet)),
                 block.timestamp + 10000
             ));
 
@@ -273,8 +286,8 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
 
-        bytes memory signature = tea.rsvToSig(r,s,v);
-        bytes4 result = smartWallet.isValidSignature(hash, signature);       
+        bytes memory signature = packSignature(r, s, v);
+        bytes4 result = smartWallet.isValidSignature(hash, signature);
 
         // Assert its valid
         assertEq(result, IERC1271.isValidSignature.selector, "Valid signature should return the magic value");
@@ -311,10 +324,10 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create Hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), 
-                bob.addr, 
-                alice.addr, 1, 
-                tea.nonces(smartWalletOwner.addr), 
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                bob.addr,
+                alice.addr, 1,
+                tea.nonces(smartWalletOwner.addr),
                 block.timestamp + 10000
             ));
 
@@ -341,10 +354,10 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Create Hash
         bytes32 messageHash = keccak256(
             abi.encode(
-                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"), 
-                address(smartWallet), 
-                alice.addr, 1, 
-                tea.nonces(smartWalletOwner.addr), 
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                address(smartWallet),
+                alice.addr, 1,
+                tea.nonces(smartWalletOwner.addr),
                 block.timestamp + 10000
             ));
 
@@ -365,5 +378,389 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         assertEq(tea.allowance(address(smartWallet), alice.addr), 0, "Permit should fail");
+    }
+
+    // ========== EIP-3009 Tests ==========
+
+    function test_transferWithAuthorization_EOA_success() public {
+        vm.warp(block.timestamp + 365 days);
+
+        // Mint tokens to alice
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 1000);
+
+        uint256 validAfter = block.timestamp - 1; // 1 second in the past
+        uint256 validBefore = block.timestamp + 1000;
+        bytes32 nonce = keccak256(abi.encodePacked("nonce1"));
+
+        // Create authorization hash
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.TRANSFER_WITH_AUTHORIZATION_TYPEHASH(),
+                alice.addr,
+                bob.addr,
+                100,
+                validAfter,
+                validBefore,
+                nonce
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        // Execute transfer with authorization
+        tea.transferWithAuthorization(
+            alice.addr,
+            bob.addr,
+            100,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+
+        assertEq(tea.balanceOf(alice.addr), 900);
+        assertEq(tea.balanceOf(bob.addr), 100);
+        assertTrue(tea.authorizationState(alice.addr, nonce));
+    }
+
+    function test_transferWithAuthorization_ERC1271_success() public {
+        vm.warp(block.timestamp + 365 days);
+
+        // Mint tokens to smart wallet
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(address(smartWallet), 1000);
+
+        uint256 validAfter = block.timestamp - 1;
+        uint256 validBefore = block.timestamp + 1000;
+        bytes32 nonce = keccak256(abi.encodePacked("nonce2"));
+
+        // Create authorization hash
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.TRANSFER_WITH_AUTHORIZATION_TYPEHASH(),
+                address(smartWallet),
+                bob.addr,
+                100,
+                validAfter,
+                validBefore,
+                nonce
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
+
+        // Execute transfer with authorization
+        tea.transferWithAuthorization(
+            address(smartWallet),
+            bob.addr,
+            100,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+
+        assertEq(tea.balanceOf(address(smartWallet)), 900);
+        assertEq(tea.balanceOf(bob.addr), 100);
+        assertTrue(tea.authorizationState(address(smartWallet), nonce));
+    }
+
+    function test_transferWithAuthorization_replay_fails() public {
+        vm.warp(block.timestamp + 365 days);
+
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 1000);
+
+        uint256 validAfter = block.timestamp - 1;
+        uint256 validBefore = block.timestamp + 1000;
+        bytes32 nonce = keccak256(abi.encodePacked("nonce3"));
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.TRANSFER_WITH_AUTHORIZATION_TYPEHASH(),
+                alice.addr,
+                bob.addr,
+                100,
+                validAfter,
+                validBefore,
+                nonce
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        // First transfer succeeds
+        tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
+
+        // Second transfer with same nonce fails
+        vm.expectRevert("EIP3009: authorization is used");
+        tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
+    }
+
+    function test_transferWithAuthorization_expired_fails() public {
+        vm.warp(block.timestamp + 365 days);
+
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 1000);
+
+        uint256 validAfter = block.timestamp - 1000;
+        uint256 validBefore = block.timestamp - 1; // Already expired
+        bytes32 nonce = keccak256(abi.encodePacked("nonce4"));
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.TRANSFER_WITH_AUTHORIZATION_TYPEHASH(),
+                alice.addr,
+                bob.addr,
+                100,
+                validAfter,
+                validBefore,
+                nonce
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        vm.expectRevert("EIP3009: authorization is expired");
+        tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
+    }
+
+    function test_transferWithAuthorization_notYetValid_fails() public {
+        vm.warp(block.timestamp + 365 days);
+
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 1000);
+
+        uint256 validAfter = block.timestamp + 1000;
+        uint256 validBefore = block.timestamp + 2000;
+        bytes32 nonce = keccak256(abi.encodePacked("nonce5"));
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.TRANSFER_WITH_AUTHORIZATION_TYPEHASH(),
+                alice.addr,
+                bob.addr,
+                100,
+                validAfter,
+                validBefore,
+                nonce
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        vm.expectRevert("EIP3009: authorization is not yet valid");
+        tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
+    }
+
+    function test_transferWithAuthorization_invalidSignature_fails() public {
+        vm.warp(block.timestamp + 365 days);
+
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 1000);
+
+        uint256 validAfter = block.timestamp - 1;
+        uint256 validBefore = block.timestamp + 1000;
+        bytes32 nonce = keccak256(abi.encodePacked("nonce6"));
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.TRANSFER_WITH_AUTHORIZATION_TYPEHASH(),
+                alice.addr,
+                bob.addr,
+                100,
+                validAfter,
+                validBefore,
+                nonce
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        // Sign with wrong key (bob instead of alice)
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bob, hash);
+
+        vm.expectRevert("EIP3009: invalid signature");
+        tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
+    }
+
+    function test_receiveWithAuthorization_EOA_success() public {
+        vm.warp(block.timestamp + 365 days);
+
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 1000);
+
+        uint256 validAfter = block.timestamp - 1;
+        uint256 validBefore = block.timestamp + 1000;
+        bytes32 nonce = keccak256(abi.encodePacked("nonce7"));
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                alice.addr,
+                bob.addr,
+                100,
+                validAfter,
+                validBefore,
+                nonce
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        // Bob (recipient) calls receiveWithAuthorization
+        vm.prank(bob.addr);
+        tea.receiveWithAuthorization(
+            alice.addr,
+            bob.addr,
+            100,
+            validAfter,
+            validBefore,
+            nonce,
+            v,
+            r,
+            s
+        );
+
+        assertEq(tea.balanceOf(alice.addr), 900);
+        assertEq(tea.balanceOf(bob.addr), 100);
+        assertTrue(tea.authorizationState(alice.addr, nonce));
+    }
+
+    function test_receiveWithAuthorization_wrongCaller_fails() public {
+        vm.warp(block.timestamp + 365 days);
+
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 1000);
+
+        uint256 validAfter = block.timestamp - 1;
+        uint256 validBefore = block.timestamp + 1000;
+        bytes32 nonce = keccak256(abi.encodePacked("nonce8"));
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                alice.addr,
+                bob.addr,
+                100,
+                validAfter,
+                validBefore,
+                nonce
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        // Alice tries to call (but should be bob as recipient)
+        vm.prank(alice.addr);
+        vm.expectRevert("EIP3009: caller must be the payee");
+        tea.receiveWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
+    }
+
+    function test_cancelAuthorization_EOA_success() public {
+        bytes32 nonce = keccak256(abi.encodePacked("nonce9"));
+
+        // Verify nonce is unused
+        assertFalse(tea.authorizationState(alice.addr, nonce));
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.CANCEL_AUTHORIZATION_TYPEHASH(),
+                alice.addr,
+                nonce
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        // Cancel authorization
+        tea.cancelAuthorization(alice.addr, nonce, v, r, s);
+
+        // Verify nonce is now used
+        assertTrue(tea.authorizationState(alice.addr, nonce));
+    }
+
+    function test_cancelAuthorization_ERC1271_success() public {
+        bytes32 nonce = keccak256(abi.encodePacked("nonce10"));
+
+        assertFalse(tea.authorizationState(address(smartWallet), nonce));
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.CANCEL_AUTHORIZATION_TYPEHASH(),
+                address(smartWallet),
+                nonce
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
+
+        // Cancel authorization
+        tea.cancelAuthorization(address(smartWallet), nonce, v, r, s);
+
+        assertTrue(tea.authorizationState(address(smartWallet), nonce));
+    }
+
+    function test_cancelAuthorization_alreadyUsed_fails() public {
+        bytes32 nonce = keccak256(abi.encodePacked("nonce11"));
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.CANCEL_AUTHORIZATION_TYPEHASH(),
+                alice.addr,
+                nonce
+            ));
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        // First cancel succeeds
+        tea.cancelAuthorization(alice.addr, nonce, v, r, s);
+
+        // Second cancel fails
+        vm.expectRevert("EIP3009: authorization is used");
+        tea.cancelAuthorization(alice.addr, nonce, v, r, s);
+    }
+
+    function test_transferWithAuthorization_afterCancel_fails() public {
+        vm.warp(block.timestamp + 365 days);
+
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 1000);
+
+        uint256 validAfter = block.timestamp - 1;
+        uint256 validBefore = block.timestamp + 1000;
+        bytes32 nonce = keccak256(abi.encodePacked("nonce12"));
+
+        // Cancel the authorization first
+        bytes32 cancelHash = keccak256(
+            abi.encode(
+                tea.CANCEL_AUTHORIZATION_TYPEHASH(),
+                alice.addr,
+                nonce
+            ));
+        bytes32 cancelDigest = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), cancelHash);
+        (uint8 cv, bytes32 cr, bytes32 cs) = vm.sign(alice, cancelDigest);
+        tea.cancelAuthorization(alice.addr, nonce, cv, cr, cs);
+
+        // Try to use the cancelled authorization
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.TRANSFER_WITH_AUTHORIZATION_TYPEHASH(),
+                alice.addr,
+                bob.addr,
+                100,
+                validAfter,
+                validBefore,
+                nonce
+            ));
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        vm.expectRevert("EIP3009: authorization is used");
+        tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
     }
 }
