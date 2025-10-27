@@ -46,16 +46,36 @@ abstract contract EIP3009 is ERC20Permit {
      */
     mapping(address => mapping(bytes32 => bool)) internal _authorizationStates;
 
+    /**
+     * @dev Invalid signature for authorization.
+     */
+    error EIP3009InvalidSignature();
+
+    /**
+     * @dev Authorization has already been used.
+     */
+    error EIP3009AuthorizationAlreadyUsed(address authorizer, bytes32 nonce);
+
+    /**
+     * @dev Authorization is not yet valid.
+     */
+    error EIP3009AuthorizationNotYetValid(uint256 validAfter, uint256 currentTime);
+
+    /**
+     * @dev Authorization has expired.
+     */
+    error EIP3009AuthorizationExpired(uint256 validBefore, uint256 currentTime);
+
+    /**
+     * @dev Caller is not the payee.
+     */
+    error EIP3009CallerMustBePayee(address caller, address payee);
+
     event AuthorizationUsed(address indexed authorizer, bytes32 indexed nonce);
     event AuthorizationCanceled(
         address indexed authorizer,
         bytes32 indexed nonce
     );
-
-    string
-        internal constant _INVALID_SIGNATURE_ERROR = "EIP3009: invalid signature";
-    string
-        internal constant _AUTHORIZATION_USED_ERROR = "EIP3009: authorization is used";
 
     /**
      * @notice Returns the state of an authorization
@@ -180,7 +200,9 @@ abstract contract EIP3009 is ERC20Permit {
         bytes32 nonce,
         bytes memory signature
     ) public {
-        require(to == msg.sender, "EIP3009: caller must be the payee");
+        if (to != msg.sender) {
+            revert EIP3009CallerMustBePayee(msg.sender, to);
+        }
 
         _transferWithAuthorizationBytes(
             RECEIVE_WITH_AUTHORIZATION_TYPEHASH,
@@ -224,10 +246,9 @@ abstract contract EIP3009 is ERC20Permit {
         bytes32 nonce,
         bytes memory signature
     ) public {
-        require(
-            !_authorizationStates[authorizer][nonce],
-            _AUTHORIZATION_USED_ERROR
-        );
+        if (_authorizationStates[authorizer][nonce]) {
+            revert EIP3009AuthorizationAlreadyUsed(authorizer, nonce);
+        }
 
         bytes32 structHash = keccak256(abi.encode(
             CANCEL_AUTHORIZATION_TYPEHASH,
@@ -242,10 +263,9 @@ abstract contract EIP3009 is ERC20Permit {
             )
         );
         
-        require(
-            _verifySig(authorizer, digest, signature),
-            _INVALID_SIGNATURE_ERROR
-        );
+        if (!_verifySig(authorizer, digest, signature)) {
+            revert EIP3009InvalidSignature();
+        }
 
         _authorizationStates[authorizer][nonce] = true;
         emit AuthorizationCanceled(authorizer, nonce);
@@ -277,9 +297,15 @@ abstract contract EIP3009 is ERC20Permit {
         bytes32 nonce,
         bytes memory signature
     ) internal {
-        require(block.timestamp > validAfter, "EIP3009: authorization is not yet valid");
-        require(block.timestamp < validBefore, "EIP3009: authorization is expired");
-        require(!_authorizationStates[from][nonce], _AUTHORIZATION_USED_ERROR);
+        if (block.timestamp <= validAfter) {
+            revert EIP3009AuthorizationNotYetValid(validAfter, block.timestamp);
+        }
+        if (block.timestamp >= validBefore) {
+            revert EIP3009AuthorizationExpired(validBefore, block.timestamp);
+        }
+        if (_authorizationStates[from][nonce]) {
+            revert EIP3009AuthorizationAlreadyUsed(from, nonce);
+        }
 
         bytes32 structHash = keccak256(abi.encode(
             typeHash,
@@ -298,10 +324,9 @@ abstract contract EIP3009 is ERC20Permit {
             )
         );
         
-        require(
-            _verifySig(from, digest, signature),
-            _INVALID_SIGNATURE_ERROR
-        );
+        if (!_verifySig(from, digest, signature)) {
+            revert EIP3009InvalidSignature();
+        }
 
         _authorizationStates[from][nonce] = true;
         emit AuthorizationUsed(from, nonce);
