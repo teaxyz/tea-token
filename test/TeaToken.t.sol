@@ -15,6 +15,7 @@ import { TokenDeploy } from "../src/TeaToken/TokenDeploy.sol";
 import { MintManager } from "../src/TeaToken/MintManager.sol";
 import { DeterministicDeployer } from "../src/utils/DeterministicDeployer.sol";
 import { ERC20Permit } from "../src/TeaToken/ERC20PermitWithERC1271.sol";
+import { EIP3009 } from "../src/TeaToken/EIP3009.sol";
 
 /* solhint-disable max-states-count */
 contract TeaTokenTest is PRBTest, StdCheats {
@@ -505,7 +506,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
 
         // Second transfer with same nonce fails
-        vm.expectRevert("EIP3009: authorization is used");
+        vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009AuthorizationAlreadyUsed.selector, alice.addr, nonce));
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
     }
 
@@ -533,7 +534,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
 
-        vm.expectRevert("EIP3009: authorization is expired");
+        vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009AuthorizationExpired.selector, validBefore, block.timestamp));
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
     }
 
@@ -561,7 +562,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
 
-        vm.expectRevert("EIP3009: authorization is not yet valid");
+        vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009AuthorizationNotYetValid.selector, validAfter, block.timestamp));
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
     }
 
@@ -590,7 +591,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Sign with wrong key (bob instead of alice)
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(bob, hash);
 
-        vm.expectRevert("EIP3009: invalid signature");
+        vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009InvalidSignature.selector));
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
     }
 
@@ -663,7 +664,9 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // Alice tries to call (but should be bob as recipient)
         vm.prank(alice.addr);
-        vm.expectRevert("EIP3009: caller must be the payee");
+        vm.expectRevert(
+            abi.encodeWithSelector(EIP3009.EIP3009CallerMustBePayee.selector, alice.addr, bob.addr)
+        );
         tea.receiveWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
     }
 
@@ -728,7 +731,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         tea.cancelAuthorization(alice.addr, nonce, v, r, s);
 
         // Second cancel fails
-        vm.expectRevert("EIP3009: authorization is used");
+        vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009AuthorizationAlreadyUsed.selector, alice.addr, nonce));
         tea.cancelAuthorization(alice.addr, nonce, v, r, s);
     }
 
@@ -767,7 +770,9 @@ contract TeaTokenTest is PRBTest, StdCheats {
         bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
 
-        vm.expectRevert("EIP3009: authorization is used");
+        vm.expectRevert(
+            abi.encodeWithSelector(EIP3009.EIP3009AuthorizationAlreadyUsed.selector, alice.addr, nonce)
+        );
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
     }
 
