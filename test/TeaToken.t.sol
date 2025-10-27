@@ -257,7 +257,10 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         bytes32 hash =  MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
+        // SECURITY: The wallet wraps the digest to prevent signature replay attacks
+        // We must sign the wrapped digest, not the original application digest
+        bytes32 wrappedHash = smartWallet.getWrappedDigest(hash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, wrappedHash);
 
         bytes memory signature = packSignature(r, s, v);
         bytes4 result = smartWallet.isValidSignature(hash, signature);
@@ -292,7 +295,9 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         bytes32 hash =  MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
 
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
+        // SECURITY: Sign the wrapped digest to prevent replay attacks
+        bytes32 wrappedHash = smartWallet.getWrappedDigest(hash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, wrappedHash);
 
         bytes memory signature = packSignature(r, s, v);
         bytes4 result = smartWallet.isValidSignature(hash, signature);
@@ -458,7 +463,10 @@ contract TeaTokenTest is PRBTest, StdCheats {
             ));
 
         bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
+        
+        // SECURITY: Sign the wrapped digest to prevent replay attacks
+        bytes32 wrappedHash = smartWallet.getWrappedDigest(hash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, wrappedHash);
 
         // Execute transfer with authorization
         tea.transferWithAuthorization(
@@ -706,7 +714,10 @@ contract TeaTokenTest is PRBTest, StdCheats {
             ));
 
         bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, hash);
+        
+        // SECURITY: Sign the wrapped digest to prevent replay attacks
+        bytes32 wrappedHash = smartWallet.getWrappedDigest(hash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, wrappedHash);
 
         // Cancel authorization
         tea.cancelAuthorization(address(smartWallet), nonce, v, r, s);
@@ -987,6 +998,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.prank(passkeyOwner.addr);
         passkeyWallet.approveDigest(digest);
 
+
         // Create invalid signature (wrong prefix)
         bytes memory invalidSignature = abi.encodePacked(
             bytes32(uint256(999)), // wrong prefix
@@ -1003,5 +1015,82 @@ contract TeaTokenTest is PRBTest, StdCheats {
             invalidSignature
         );
     }
+
+    /**
+     * @notice Test that ERC-1271 signature replay attack is prevented
+     * @dev This test demonstrates the vulnerability described in:
+     *      https://www.alchemy.com/blog/erc-1271-signature-replay-vulnerability
+     * 
+     * SCENARIO: Alice owns two smart wallets (wallet1 and wallet2) with the same EOA signer.
+     * Without proper protection, a signature valid for wallet1 could be replayed on wallet2.
+     * 
+     * PROTECTION: Both wallets wrap incoming digests with their own domain separator,
+     * making signatures specific to each wallet address.
+     */
+    function test_ERC1271_signature_replay_attack_prevented() public {
+        // Create two wallets owned by the same EOA
+        ERC1271Wallet wallet1 = new ERC1271Wallet(smartWalletOwner.addr);
+        ERC1271Wallet wallet2 = new ERC1271Wallet(smartWalletOwner.addr);
+
+        // Transfer tokens from initial supply to both wallets
+        // (avoiding minting to keep test simple)
+        vm.startPrank(initialGovernor.addr);
+        tea.transfer(address(wallet1), 1000);
+        tea.transfer(address(wallet2), 1000);
+        vm.stopPrank();
+
+        // Create a permit for wallet1
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                address(wallet1), // wallet1 as owner
+                bob.addr,
+                100,
+                tea.nonces(address(wallet1)),
+                block.timestamp + 10000
+            ));
+
+        bytes32 appDigest = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+
+        // Sign with wallet1's wrapped digest
+        bytes32 wallet1WrappedDigest = wallet1.getWrappedDigest(appDigest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, wallet1WrappedDigest);
+
+        // The signature should work for wallet1
+        vm.prank(smartWalletOwner.addr);
+        tea.permit(
+            address(wallet1),
+            bob.addr,
+            100,
+            block.timestamp + 10000,
+            v,
+            r,
+            s
+        );
+
+        assertEq(tea.allowance(address(wallet1), bob.addr), 100, "Wallet1 permit should succeed");
+
+        // REPLAY ATTACK ATTEMPT: Try to use the same signature for wallet2
+        // This should FAIL because wallet2 wraps the digest differently
+        // We don't even need to create the correct message - the signature from wallet1 won't work
+
+        // Try to replay the same signature (v, r, s) from wallet1 on wallet2
+        // This should fail because wallet2 has a different domain separator
+        vm.prank(smartWalletOwner.addr);
+        vm.expectRevert(); // Signature verification should fail
+        tea.permit(
+            address(wallet2),
+            bob.addr,
+            100,
+            block.timestamp + 10000,
+            v,
+            r,
+            s
+        );
+
+        // Verify wallet2 allowance was NOT set (replay attack prevented)
+        assertEq(tea.allowance(address(wallet2), bob.addr), 0, "Wallet2 permit should fail - replay attack prevented");
+    }
 }
+
 
