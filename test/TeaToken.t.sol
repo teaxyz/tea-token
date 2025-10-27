@@ -10,6 +10,7 @@ import {MessageHashUtils} from "@openzeppelin/utils/cryptography/MessageHashUtil
 
 import { Tea } from "../src/TeaToken/Tea.sol";
 import { ERC1271Wallet } from "./helpers/ERC1271Wallet.sol";
+import { PasskeyWallet } from "./helpers/PasskeyWallet.sol";
 import { TokenDeploy } from "../src/TeaToken/TokenDeploy.sol";
 import { MintManager } from "../src/TeaToken/MintManager.sol";
 import { DeterministicDeployer } from "../src/utils/DeterministicDeployer.sol";
@@ -21,11 +22,13 @@ contract TeaTokenTest is PRBTest, StdCheats {
     TokenDeploy internal tokenDeploy;
     MintManager internal mintManager;
     ERC1271Wallet internal smartWallet;
+    PasskeyWallet internal passkeyWallet;
 
     VmSafe.Wallet internal initialGovernor = vm.createWallet("Initial Gov Account");
     VmSafe.Wallet internal alice = vm.createWallet("Alice Account");
     VmSafe.Wallet internal bob = vm.createWallet("Bob Account");
     VmSafe.Wallet internal smartWalletOwner = vm.createWallet("SmartWallet Account");
+    VmSafe.Wallet internal passkeyOwner = vm.createWallet("Passkey Owner Account");
 
     error OwnableUnauthorizedAccount(address account);
     error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed);
@@ -58,6 +61,10 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         smartWallet = ERC1271Wallet(
             DeterministicDeployer._deploy(salt, type(ERC1271Wallet).creationCode, abi.encode(smartWalletOwner.addr))
+        );
+        
+        passkeyWallet = PasskeyWallet(
+            DeterministicDeployer._deploy(keccak256(abi.encode(salt, "passkey")), type(PasskeyWallet).creationCode, abi.encode(passkeyOwner.addr))
         );
     }
 
@@ -763,4 +770,233 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.expectRevert("EIP3009: authorization is used");
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
     }
+
+    // ============================================
+    // Passkey Wallet Tests (7702/WebAuthn/Ed25519)
+    // ============================================
+
+    function test_passkey_permit_success() public {
+        // Mint tokens to passkey wallet
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(address(passkeyWallet), 1000);
+
+        // Create permit digest
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                address(passkeyWallet),
+                alice.addr,
+                100,
+                tea.nonces(address(passkeyWallet)),
+                block.timestamp + 10000
+            ));
+        bytes32 digest = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+
+        // Pre-approve the digest (simulates user confirming via biometrics)
+        vm.prank(passkeyOwner.addr);
+        passkeyWallet.approveDigest(digest);
+
+        // Create passkey-style signature (non-ECDSA)
+        bytes memory passkeySignature = abi.encodePacked(
+            passkeyWallet.MAGIC_PREFIX(),
+            bytes32(uint256(1)), // arbitrary passkey data
+            bytes32(uint256(2))  // arbitrary passkey data
+        );
+
+        // Call permit with bytes signature
+        tea.permit(
+            address(passkeyWallet),
+            alice.addr,
+            100,
+            block.timestamp + 10000,
+            passkeySignature
+        );
+
+        assertEq(tea.allowance(address(passkeyWallet), alice.addr), 100, "Passkey permit should succeed");
+    }
+
+    function test_passkey_transferWithAuthorization_success() public {
+        // Mint tokens to passkey wallet
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(address(passkeyWallet), 1000);
+
+        bytes32 nonce = bytes32(uint256(1));
+        uint256 validAfter = block.timestamp - 1; // Past time
+        uint256 validBefore = block.timestamp + 1000; // Future time
+
+        // Create transfer authorization digest
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.TRANSFER_WITH_AUTHORIZATION_TYPEHASH(),
+                address(passkeyWallet),
+                bob.addr,
+                100,
+                validAfter,
+                validBefore,
+                nonce
+            ));
+        bytes32 digest = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+
+        // Pre-approve the digest
+        vm.prank(passkeyOwner.addr);
+        passkeyWallet.approveDigest(digest);
+
+        // Create passkey-style signature
+        bytes memory passkeySignature = abi.encodePacked(
+            passkeyWallet.MAGIC_PREFIX(),
+            bytes32(uint256(3)),
+            bytes32(uint256(4))
+        );
+
+        // Call transferWithAuthorization with bytes signature
+        tea.transferWithAuthorization(
+            address(passkeyWallet),
+            bob.addr,
+            100,
+            validAfter,
+            validBefore,
+            nonce,
+            passkeySignature
+        );
+
+        assertEq(tea.balanceOf(address(passkeyWallet)), 900, "Balance should decrease");
+        assertEq(tea.balanceOf(bob.addr), 100, "Bob should receive tokens");
+        assertTrue(tea.authorizationState(address(passkeyWallet), nonce), "Nonce should be used");
+    }
+
+    function test_passkey_receiveWithAuthorization_success() public {
+        // Mint tokens to passkey wallet
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(address(passkeyWallet), 1000);
+
+        bytes32 nonce = bytes32(uint256(2));
+        uint256 validAfter = block.timestamp - 1; // Past time
+        uint256 validBefore = block.timestamp + 1000; // Future time
+
+        // Create receive authorization digest
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.RECEIVE_WITH_AUTHORIZATION_TYPEHASH(),
+                address(passkeyWallet),
+                bob.addr,
+                100,
+                validAfter,
+                validBefore,
+                nonce
+            ));
+        bytes32 digest = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+
+        // Pre-approve the digest
+        vm.prank(passkeyOwner.addr);
+        passkeyWallet.approveDigest(digest);
+
+        // Create passkey-style signature
+        bytes memory passkeySignature = abi.encodePacked(
+            passkeyWallet.MAGIC_PREFIX(),
+            bytes32(uint256(5)),
+            bytes32(uint256(6))
+        );
+
+        // Bob calls receiveWithAuthorization with bytes signature
+        vm.prank(bob.addr);
+        tea.receiveWithAuthorization(
+            address(passkeyWallet),
+            bob.addr,
+            100,
+            validAfter,
+            validBefore,
+            nonce,
+            passkeySignature
+        );
+
+        assertEq(tea.balanceOf(address(passkeyWallet)), 900);
+        assertEq(tea.balanceOf(bob.addr), 100);
+    }
+
+    function test_passkey_cancelAuthorization_success() public {
+        bytes32 nonce = bytes32(uint256(3));
+
+        // Create cancel authorization digest
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.CANCEL_AUTHORIZATION_TYPEHASH(),
+                address(passkeyWallet),
+                nonce
+            ));
+        bytes32 digest = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+
+        // Pre-approve the digest
+        vm.prank(passkeyOwner.addr);
+        passkeyWallet.approveDigest(digest);
+
+        // Create passkey-style signature
+        bytes memory passkeySignature = abi.encodePacked(
+            passkeyWallet.MAGIC_PREFIX(),
+            bytes32(uint256(7)),
+            bytes32(uint256(8))
+        );
+
+        // Cancel with bytes signature
+        tea.cancelAuthorization(address(passkeyWallet), nonce, passkeySignature);
+
+        assertTrue(tea.authorizationState(address(passkeyWallet), nonce), "Nonce should be marked as used");
+    }
+
+    function test_passkey_unapproved_digest_fails() public {
+        // Try to use permit without pre-approving digest
+        // (digest intentionally not approved to test failure)
+
+        bytes memory passkeySignature = abi.encodePacked(
+            passkeyWallet.MAGIC_PREFIX(),
+            bytes32(uint256(9)),
+            bytes32(uint256(10))
+        );
+
+        vm.expectRevert();
+        tea.permit(
+            address(passkeyWallet),
+            alice.addr,
+            100,
+            block.timestamp + 10000,
+            passkeySignature
+        );
+    }
+
+    function test_passkey_invalid_signature_format_fails() public {
+        // Create permit digest
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)"),
+                address(passkeyWallet),
+                alice.addr,
+                100,
+                tea.nonces(address(passkeyWallet)),
+                block.timestamp + 10000
+            ));
+        bytes32 digest = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+
+        // Pre-approve the digest
+        vm.prank(passkeyOwner.addr);
+        passkeyWallet.approveDigest(digest);
+
+        // Create invalid signature (wrong prefix)
+        bytes memory invalidSignature = abi.encodePacked(
+            bytes32(uint256(999)), // wrong prefix
+            bytes32(uint256(1)),
+            bytes32(uint256(2))
+        );
+
+        vm.expectRevert();
+        tea.permit(
+            address(passkeyWallet),
+            alice.addr,
+            100,
+            block.timestamp + 10000,
+            invalidSignature
+        );
+    }
 }
+
