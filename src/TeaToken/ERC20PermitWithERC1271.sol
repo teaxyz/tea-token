@@ -91,13 +91,21 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
             revert ERC2612ExpiredSignature(deadline);
         }
 
-        bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, _useNonce(owner), deadline));
+        // SECURITY: Read nonce WITHOUT consuming it yet (prevent griefing attack)
+        // If we consume nonce before verification, attacker can grief by submitting invalid signatures
+        uint256 currentNonce = nonces(owner);
+        
+        bytes32 structHash = keccak256(abi.encode(PERMIT_TYPEHASH, owner, spender, value, currentNonce, deadline));
         bytes32 digest = _hashTypedDataV4(structHash);
         
+        // Verify signature BEFORE consuming nonce
         (bool valid, address recovered) = _verifySignature(owner, digest, signature);
         if (!valid) {
             revert ERC2612InvalidSigner(recovered, owner);
         }
+
+        // ONLY consume nonce after successful verification
+        _useNonce(owner);
 
         _approve(owner, spender, value);
     }
