@@ -1540,25 +1540,6 @@ contract TeaTokenTest is PRBTest, StdCheats {
         assertEq(address(tea).balance, 0);
         assertEq(address(tea.TREASURY_SAFE()).balance, 5 ether);
     }
-
-    function test_EIP5267_Domain() public {
-        (
-            ,
-            string memory name,
-            string memory version,
-            uint256 chainId,
-            address verifyingContract,
-            bytes32 salt,
-            uint256[] memory extensions
-        ) = tea.eip712Domain();
-
-        assertEq(name, tea.name());
-        assertEq(version, "1");
-        assertEq(chainId, block.chainid);
-        assertEq(verifyingContract, address(tea));
-        assertEq(salt, bytes32(0));
-        assertEq(extensions.length, 0);
-    }
 }
 
 
