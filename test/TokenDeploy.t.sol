@@ -32,31 +32,33 @@ contract TokenDeployTest is PRBTest, StdCheats {
     function test_deploy_fail() public {
         bytes32 salt = keccak256(abi.encode(0x00, "tea"));
         vm.expectRevert(Unauthorized.selector);
-        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)));
+        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)));
     }
 
     function test_repeat_deploy_fail() public {
         bytes32 salt = keccak256(abi.encode(0x00, "tea"));
 
         vm.prank(initialGovernor.addr);
-        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)));
+        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)));
 
         vm.prank(initialGovernor.addr);
         vm.expectRevert(AlreadyDeployed.selector);
-        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)));
+        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)));
     }
 
     function test_deploy_succeed() public {
         bytes32 salt = keccak256(abi.encode(0x00, "tea"));
 
         vm.prank(initialGovernor.addr);
-        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)));
+        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)));
 
         address _tea = tokenDeploy.tea();
         address _mintManager = tokenDeploy.mintManager();
+        address _timelockController = tokenDeploy.timelockController();
 
         assertNotEq(_tea, address(0));
         assertNotEq(_mintManager, address(0));
+        assertNotEq(_timelockController, address(0));
         assertEq(Tea(_tea).owner(), _mintManager);
         assertEq(Tea(_tea).totalSupply(), Tea(_tea).INITIAL_SUPPLY());
         assertEq(Tea(_tea).totalMinted(), Tea(_tea).INITIAL_SUPPLY());

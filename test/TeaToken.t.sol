@@ -55,7 +55,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         vm.prank(initialGovernor.addr);
-        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)));
+        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)));
 
         tea = Tea(tokenDeploy.tea());
         mintManager = MintManager(tokenDeploy.mintManager());
