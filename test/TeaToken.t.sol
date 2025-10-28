@@ -7,6 +7,7 @@ import { StdCheats } from "forge-std/StdCheats.sol";
 import { IERC20Errors } from "@openzeppelin/interfaces/draft-IERC6093.sol";
 import { IERC1271 } from "@openzeppelin/interfaces/IERC1271.sol";
 import {MessageHashUtils} from "@openzeppelin/utils/cryptography/MessageHashUtils.sol";
+import { Token_ERC20, Token_ERC721 } from "./helpers/Mocks.t.sol";
 
 import { Tea } from "../src/TeaToken/Tea.sol";
 import { ERC1271Wallet } from "./helpers/ERC1271Wallet.sol";
@@ -33,6 +34,9 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
     error OwnableUnauthorizedAccount(address account);
     error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed);
+    event RecoveredToken(address indexed token, address indexed to, uint256 amount);
+    event RecoveredNFT(address indexed token, address indexed to, uint256 tokenId);
+    event RecoveredEth(address indexed to, uint256 amount);
 
     // Helper to pack r,s,v into bytes signature
     function packSignature(bytes32 r, bytes32 s, uint8 v) internal pure returns (bytes memory) {
@@ -1326,6 +1330,68 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // Verify wallet2 allowance was NOT set (replay attack prevented)
         assertEq(tea.allowance(address(wallet2), bob.addr), 0, "Wallet2 permit should fail - replay attack prevented");
+    }
+
+    // -------------------------- Recovery tests ----------------------------
+    function test_recoverToken_onlyTimelock_reverts() public {
+        Token_ERC20 token = new Token_ERC20();
+        token.mint(address(tea), 1 ether);
+
+        // Call from a non-timelock address should revert
+        vm.prank(initialGovernor.addr);
+        vm.expectRevert();
+        tea.recoverToken(address(token));
+    }
+
+    function test_recoverToken_success_sendsToTreasury() public {
+        Token_ERC20 token = new Token_ERC20();
+        token.mint(address(tea), 2 ether);
+        uint256 amt = token.balanceOf(address(tea));
+
+        // Call from timelock should succeed
+        vm.prank(tea.timelock());
+        tea.recoverToken(address(token));
+
+        assertEq(token.balanceOf(tea.TREASURY_SAFE()), amt);
+        assertEq(token.balanceOf(address(tea)), 0);
+    }
+
+    function test_recoverNFT_onlyTimelock_reverts() public {
+        Token_ERC721 nft = new Token_ERC721();
+        nft.mint(address(tea), 1337);
+
+        vm.prank(initialGovernor.addr);
+        vm.expectRevert();
+        tea.recoverNFT(address(nft), 1337);
+    }
+
+    function test_recoverNFT_success_transfers() public {
+        Token_ERC721 nft = new Token_ERC721();
+        nft.mint(address(tea), 2025);
+
+        vm.prank(tea.timelock());
+        tea.recoverNFT(address(nft), 2025);
+
+        assertEq(nft.ownerOf(2025), tea.TREASURY_SAFE());
+    }
+
+    function test_recoverEth_onlyTimelock_reverts() public {
+        // Non-timelock call should revert
+        vm.deal(address(tea), 3 ether);
+        vm.prank(initialGovernor.addr);
+        vm.expectRevert();
+        tea.recoverEth();
+    }
+
+    function test_recoverEth_onlyTimelock_success_transfers() public {
+        // Timelock can recover ETH
+        vm.deal(address(tea), 5 ether);
+
+        vm.prank(tea.timelock());
+        tea.recoverEth();
+
+        assertEq(address(tea).balance, 0);
+        assertEq(address(tea.TREASURY_SAFE()).balance, 5 ether);
     }
 }
 

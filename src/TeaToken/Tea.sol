@@ -34,7 +34,7 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
     bytes4 constant ERC1271_INVALID_SIGNATURE = 0xffffffff;
 
     address public timelock;
-    address constant TREASURY_SAFE = 0xcDb68686290310dD8623371E1db53157dB6b8cA1;
+    address public constant TREASURY_SAFE = 0xcDb68686290310dD8623371E1db53157dB6b8cA1;
 
     /* -------------------------------- Constants ------------------------------- */
 
