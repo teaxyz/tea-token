@@ -21,7 +21,7 @@ import { ERC20 } from "@openzeppelin/token/ERC20/ERC20.sol";
 import { IERC20 } from "@openzeppelin/interfaces/IERC20.sol";
 import { IERC721 } from "@openzeppelin/interfaces/IERC721.sol";
 import { Ownable } from "@openzeppelin/access/Ownable.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ReentrancyGuard } from "@openzeppelin/utils/ReentrancyGuard.sol";
 /* solhint-enable no-unused-import */
 import { Ownable2Step } from "@openzeppelin/access/Ownable2Step.sol";
 import { ERC20Permit } from "./ERC20PermitWithERC1271.sol";
