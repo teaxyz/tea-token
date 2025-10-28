@@ -33,6 +33,8 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
 
     bytes4 constant ERC1271_INVALID_SIGNATURE = 0xffffffff;
 
+    address constant TREASURY_SAFE = 0xcDb68686290310dD8623371E1db53157dB6b8cA1;
+
     /* -------------------------------- Constants ------------------------------- */
 
     uint256 public constant INITIAL_SUPPLY = 100_000_000_000 ether;
@@ -69,9 +71,7 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
     /// @dev Increments `totalMinted`.
     /// @param account The address to receive minted tokens.
     /// @param value   The amount of tokens to be minted.
-    function mintTo(address account, uint256 value) external {
-        _checkOwner();
-
+    function mintTo(address account, uint256 value) external onlyOwner {
         totalMinted = totalMinted + value;
 
         _mint(account, value);
@@ -131,12 +131,11 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
         uint256 balance = token.balanceOf(address(this));
 
         // Transfer the tokens from this contract to the specified address.
-        token.transfer(owner(), balance);
+        token.transfer(TREASURY_SAFE, balance);
         
-        emit RecoveredToken(tokenAddress, owner(), balance);
+        emit RecoveredToken(tokenAddress, TREASURY_SAFE, balance);
     }
     
-
     /**
      * @dev Allows the contract owner to recover any ERC-20 tokens
      * that were accidentally sent to this contract.
@@ -151,9 +150,9 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
         IERC721 nft = IERC721(tokenAddress);
         
         // This line attempts the safe transfer of the NFT
-        nft.safeTransferFrom(address(this), owner(), tokenId);
+        nft.safeTransferFrom(address(this), TREASURY_SAFE, tokenId);
 
-        emit RecoveredNFT(tokenAddress, owner(), tokenId);
+        emit RecoveredNFT(tokenAddress, TREASURY_SAFE, tokenId);
     }
 
     /**
@@ -163,8 +162,8 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
     function recoverEth() public virtual onlyOwner nonReentrant {
         uint256 balance = address(this).balance;
 
-        payable(owner()).transfer(balance);
+        payable(TREASURY_SAFE).transfer(balance);
 
-        emit RecoveredEth(owner(), balance);
+        emit RecoveredEth(TREASURY_SAFE, balance);
     }
 }
