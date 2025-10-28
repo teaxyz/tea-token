@@ -29,7 +29,7 @@ This repo uses PaulRBerg's foundry-template.
 To write a new test contract, you start by importing [PRBTest](https://github.com/PaulRBerg/prb-test) and inherit from
 it in your test contract. PRBTest comes with a pre-instantiated [cheatcodes](https://getfoundry.sh/reference/cheatcodes/overview)
 environment accessible via the `vm` property. If you would like to view the logs in the terminal output you can add the
-`-vvv` flag and use [console.log](https://book.getfoundry.sh/faq?highlight=console.log#how-do-i-use-consolelog).
+`-vvv` flag and use [console.log](https://getfoundry.sh/reference/forge-std/console-log.html).
 
 
 ## Usage
