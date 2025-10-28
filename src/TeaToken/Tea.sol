@@ -176,14 +176,14 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev Allows the contract owner to recover any ETH
-     * that was accidentally sent to this contract.
+     * @dev Allow the contract owner to recover Tea tokens
+     * @param amount amount of token to sweep
      */
-    function recoverEth() public virtual onlyTimelock nonReentrant {
-        uint256 balance = address(this).balance;
-
-        payable(TREASURY_SAFE).transfer(balance);
-
-        emit RecoveredEth(TREASURY_SAFE, balance);
+    function sweepSelf(uint256 amount) public virtual onlyTimelock nonReentrant {
+        _transfer(address(this), TREASURY_SAFE, amount);
     }
+
+    error NativeNotAccepted();
+    receive() external payable { revert NativeNotAccepted(); }
+    fallback() external payable { revert(); }
 }

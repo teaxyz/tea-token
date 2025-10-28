@@ -37,8 +37,8 @@ contract MintManager is Ownable2Step {
     /// @notice Constructs the MintManager contract.
     /// @param _owner        The owner of this contract.
     /// @param _governanceToken The governance token this contract can mint tokens of.
-    constructor(address _owner, address _governanceToken) Ownable(_owner) {
-        tea = Tea(_governanceToken);
+    constructor(address _owner, address payable _governanceToken) Ownable(_owner) {
+        tea = Tea(payable(_governanceToken));
 
         // No minting within first year.
         mintPermittedAfter = block.timestamp + MINT_PERIOD;

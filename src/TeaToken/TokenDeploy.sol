@@ -67,10 +67,10 @@ contract TokenDeploy {
         address _mintManager = Create2.computeAddress(salt2, codeHash, address(this));
         mintManager = _mintManager;
 
-        Tea(tea).transferOwnership(_mintManager);
-        Tea(tea).transfer(INITIAL_GOVERNOR, Tea(tea).totalSupply());
+        Tea(payable(tea)).transferOwnership(_mintManager);
+        Tea(payable(tea)).transfer(INITIAL_GOVERNOR, Tea(payable(tea)).totalSupply());
 
         // Record address.
-        if (_mintManager != address(new MintManager{ salt: salt2 }(INITIAL_GOVERNOR, tea))) revert AddressMismatch();
+        if (_mintManager != address(new MintManager{ salt: salt2 }(INITIAL_GOVERNOR, payable(tea)))) revert AddressMismatch();
     }
 }

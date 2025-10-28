@@ -61,7 +61,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.prank(initialGovernor.addr);
         tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)));
 
-        tea = Tea(tokenDeploy.tea());
+        tea = Tea(payable(tokenDeploy.tea()));
         mintManager = MintManager(tokenDeploy.mintManager());
 
         smartWallet = ERC1271Wallet(
@@ -1482,7 +1482,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
     // -------------------------- Recovery tests ----------------------------
     function test_recoverToken_onlyTimelock_reverts() public {
         Token_ERC20 token = new Token_ERC20();
-        token.mint(address(tea), 1 ether);
+        token.mint(address(tea), 1);
 
         // Call from a non-timelock address should revert
         vm.prank(initialGovernor.addr);
@@ -1492,14 +1492,13 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
     function test_recoverToken_success_sendsToTreasury() public {
         Token_ERC20 token = new Token_ERC20();
-        token.mint(address(tea), 2 ether);
-        uint256 amt = token.balanceOf(address(tea));
+        token.mint(address(tea), 1);
 
         // Call from timelock should succeed
         vm.prank(tea.timelock());
         tea.recoverToken(address(token));
 
-        assertEq(token.balanceOf(tea.TREASURY_SAFE()), amt);
+        assertEq(token.balanceOf(tea.TREASURY_SAFE()), 1);
         assertEq(token.balanceOf(address(tea)), 0);
     }
 
@@ -1524,21 +1523,24 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
     function test_recoverEth_onlyTimelock_reverts() public {
         // Non-timelock call should revert
-        vm.deal(address(tea), 3 ether);
+        vm.prank(initialGovernor.addr);
+        tea.transfer(address(tea), 1);
+
         vm.prank(initialGovernor.addr);
         vm.expectRevert();
-        tea.recoverEth();
+        tea.sweepSelf(1);
     }
 
     function test_recoverEth_onlyTimelock_success_transfers() public {
-        // Timelock can recover ETH
-        vm.deal(address(tea), 5 ether);
+        // Timelock can recover TEA
+        vm.prank(initialGovernor.addr);
+        tea.transfer(address(tea), 1);
 
         vm.prank(tea.timelock());
-        tea.recoverEth();
+        tea.sweepSelf(1);
 
-        assertEq(address(tea).balance, 0);
-        assertEq(address(tea.TREASURY_SAFE()).balance, 5 ether);
+        assertEq(tea.balanceOf(tea.TREASURY_SAFE()), 1);
+        assertEq(tea.balanceOf(address(tea)), 0);
     }
 
     function test_EIP5267_Domain() public {
