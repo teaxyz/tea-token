@@ -39,6 +39,10 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
     bytes32 public constant PERMIT_TYPEHASH =
         keccak256("Permit(address owner,address spender,uint256 value,uint256 nonce,uint256 deadline)");
 
+    // PermitBurn typehash: owner authorizes burning `amount` with a nonce and deadline
+    bytes32 public constant PERMIT_BURN_TYPEHASH =
+        keccak256("PermitBurn(address owner,uint256 amount,uint256 nonce,uint256 deadline)");
+
     /**
      * @dev Permit deadline has expired.
      */
@@ -169,6 +173,52 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
         }
         bytesArray[64] = bytes1(_c);
         return bytesArray;
+    }
+
+    /**
+     * @notice Permit-based burn using v,r,s
+     * @dev Mirrors the permit flow but burns `amount` from `owner` after signature verification
+     */
+    function permitBurn(
+        address owner,
+        uint256 amount,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) public virtual {
+        bytes memory signature = rsvToSig(r, s, v);
+        permitBurn(owner, amount, deadline, signature);
+    }
+
+    /**
+     * @notice Permit-based burn using bytes signature (supports ERC-1271 and passkey formats)
+     */
+    function permitBurn(
+        address owner,
+        uint256 amount,
+        uint256 deadline,
+        bytes memory signature
+    ) public virtual {
+        if (block.timestamp > deadline) {
+            revert ERC2612ExpiredSignature(deadline);
+        }
+
+        uint256 currentNonce = nonces(owner);
+
+        bytes32 structHash = keccak256(abi.encode(PERMIT_BURN_TYPEHASH, owner, amount, currentNonce, deadline));
+        bytes32 digest = _hashTypedDataV4(structHash);
+
+        (bool valid, address recovered) = _verifySignature(owner, digest, signature);
+        if (!valid) {
+            revert ERC2612InvalidSigner(recovered, owner);
+        }
+
+        // Consume nonce only after successful verification
+        _useNonce(owner);
+
+        // Perform the burn
+        _burn(owner, amount);
     }
 
     /**

@@ -633,6 +633,153 @@ contract TeaTokenTest is PRBTest, StdCheats {
         tea.permit(alice.addr, bob.addr, 100, deadline, v, r, s);
     }
 
+    // ==================== permitBurn Tests ====================
+    function test_permitBurn_EOA_success() public {
+        vm.warp(block.timestamp + 365 days);
+
+        // Mint tokens to alice so she can burn
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 1000);
+
+        uint256 amount = 100;
+        uint256 deadline = block.timestamp + 1000;
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.PERMIT_BURN_TYPEHASH(),
+                alice.addr,
+                amount,
+                tea.nonces(alice.addr),
+                deadline
+            )
+        );
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        // Call permitBurn (any caller can submit)
+        tea.permitBurn(alice.addr, amount, deadline, v, r, s);
+
+        assertEq(tea.balanceOf(alice.addr), 1000 - amount);
+    }
+
+    function test_permitBurn_replay_fails() public {
+        vm.warp(block.timestamp + 365 days);
+
+        // Mint tokens to alice
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 2000);
+
+        uint256 amount = 50;
+        uint256 deadline = block.timestamp + 1000;
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.PERMIT_BURN_TYPEHASH(),
+                alice.addr,
+                amount,
+                tea.nonces(alice.addr),
+                deadline
+            )
+        );
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        // First call succeeds
+        tea.permitBurn(alice.addr, amount, deadline, v, r, s);
+
+        // Second call with same signature should fail (nonce consumed)
+        vm.expectRevert();
+        tea.permitBurn(alice.addr, amount, deadline, v, r, s);
+    }
+
+    function test_permitBurn_expiredDeadline_reverts() public {
+        uint256 expiredDeadline = block.timestamp - 1;
+        uint256 amount = 1;
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.PERMIT_BURN_TYPEHASH(),
+                alice.addr,
+                amount,
+                tea.nonces(alice.addr),
+                expiredDeadline
+            )
+        );
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
+
+        vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612ExpiredSignature.selector, expiredDeadline));
+        tea.permitBurn(alice.addr, amount, expiredDeadline, v, r, s);
+    }
+
+    function test_permitBurn_invalidSigner_reverts() public {
+        vm.warp(block.timestamp + 365 days);
+
+        vm.prank(initialGovernor.addr);
+        mintManager.mintTo(alice.addr, 1000);
+
+        uint256 amount = 10;
+        uint256 deadline = block.timestamp + 1000;
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.PERMIT_BURN_TYPEHASH(),
+                alice.addr,
+                amount,
+                tea.nonces(alice.addr),
+                deadline
+            )
+        );
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+        // Sign with bob (attacker)
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(bob, hash);
+
+        vm.expectRevert();
+        tea.permitBurn(alice.addr, amount, deadline, v, r, s);
+    }
+
+    function test_permitBurn_erc1271_success() public {
+        vm.warp(block.timestamp + 365 days);
+
+        // Deploy a smart wallet and mint tokens to it
+        ERC1271Wallet wallet = new ERC1271Wallet(smartWalletOwner.addr);
+
+        vm.startPrank(initialGovernor.addr);
+        mintManager.mintTo(address(wallet), 1000);
+        vm.stopPrank();
+
+        uint256 amount = 25;
+        uint256 deadline = block.timestamp + 1000;
+
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.PERMIT_BURN_TYPEHASH(),
+                address(wallet),
+                amount,
+                tea.nonces(address(wallet)),
+                deadline
+            )
+        );
+
+        bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+
+        // Sign the wrapped digest for the wallet
+        bytes32 wrapped = wallet.getWrappedDigest(hash);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(smartWalletOwner, wrapped);
+
+        bytes memory signature = packSignature(r, s, v);
+
+        // Caller can be anyone; emulate sender as smartWalletOwner for parity with other tests
+        vm.prank(smartWalletOwner.addr);
+        tea.permitBurn(address(wallet), amount, deadline, signature);
+
+        assertEq(tea.balanceOf(address(wallet)), 1000 - amount);
+    }
+
     // ========== EIP-3009 Tests ==========
 
     function test_transferWithAuthorization_EOA_success() public {
