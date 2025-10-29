@@ -72,7 +72,7 @@ library ECRecover {
 
         // If the signature is valid (and not malleable), return the signer address
         address signer = ecrecover(digest, v, r, s);
-        require(signer != address(0), ECRecoverInvalidSignature());
+        if (signer == address(0)) revert ECRecoverInvalidSignature();
 
         return signer;
     }
