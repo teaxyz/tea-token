@@ -538,6 +538,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Should revert with ERC2612ExpiredSignature
         vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612ExpiredSignature.selector, expiredDeadline));
         tea.permit(alice.addr, bob.addr, 100, expiredDeadline, v, r, s);
+        assertEq(tea.nonces(alice.addr), 0, "Nonce should not increment");
     }
 
     function test_permit_deadlineBoundary_exactTimestamp() public {
@@ -561,6 +562,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         tea.permit(alice.addr, bob.addr, 100, deadline, v, r, s);
 
         assertEq(tea.allowance(alice.addr, bob.addr), 100);
+        assertEq(tea.nonces(alice.addr), 1, "Nonce should increment");
     }
 
     function test_permit_maxUint256Value() public {
@@ -584,6 +586,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         tea.permit(alice.addr, bob.addr, maxValue, deadline, v, r, s);
 
         assertEq(tea.allowance(alice.addr, bob.addr), maxValue);
+        assertEq(tea.nonces(alice.addr), 1, "Nonce should increment");
     }
 
     function test_permit_integrationWithTransferFrom() public {
@@ -915,6 +918,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // First transfer succeeds
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
+        assertTrue(tea.authorizationState(alice.addr, nonce));
 
         // Second transfer with same nonce fails
         vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009AuthorizationAlreadyUsed.selector, alice.addr, nonce));
@@ -947,6 +951,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009AuthorizationExpired.selector, validBefore, block.timestamp));
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
+        assertFalse(tea.authorizationState(alice.addr, nonce));
     }
 
     function test_transferWithAuthorization_notYetValid_fails() public {
@@ -975,6 +980,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009AuthorizationNotYetValid.selector, validAfter, block.timestamp));
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
+        assertFalse(tea.authorizationState(alice.addr, nonce));
     }
 
     function test_transferWithAuthorization_invalidSignature_fails() public {
@@ -1004,6 +1010,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009InvalidSignature.selector));
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
+        assertFalse(tea.authorizationState(alice.addr, nonce));
     }
 
     function test_receiveWithAuthorization_EOA_success() public {
@@ -1079,6 +1086,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
             abi.encodeWithSelector(EIP3009.EIP3009CallerMustBePayee.selector, alice.addr, bob.addr)
         );
         tea.receiveWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
+        assertFalse(tea.authorizationState(alice.addr, nonce));
     }
 
     function test_cancelAuthorization_EOA_success() public {
@@ -1143,6 +1151,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // First cancel succeeds
         tea.cancelAuthorization(alice.addr, nonce, v, r, s);
+        assertTrue(tea.authorizationState(alice.addr, nonce));
 
         // Second cancel fails
         vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009AuthorizationAlreadyUsed.selector, alice.addr, nonce));
@@ -1169,6 +1178,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         bytes32 cancelDigest = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), cancelHash);
         (uint8 cv, bytes32 cr, bytes32 cs) = vm.sign(alice, cancelDigest);
         tea.cancelAuthorization(alice.addr, nonce, cv, cr, cs);
+        assertTrue(tea.authorizationState(alice.addr, nonce));
 
         // Try to use the cancelled authorization
         bytes32 messageHash = keccak256(
@@ -1333,6 +1343,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         assertEq(tea.balanceOf(address(passkeyWallet)), 900);
         assertEq(tea.balanceOf(bob.addr), 100);
+        assertTrue(tea.authorizationState(address(passkeyWallet), nonce), "Nonce should be used");
     }
 
     function test_passkey_cancelAuthorization_success() public {
@@ -1383,6 +1394,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
             block.timestamp + 10000,
             passkeySignature
         );
+        assertEq(tea.nonces(smartWalletOwner.addr), 0, "Nonce should not increment");
     }
 
     function test_passkey_invalid_signature_format_fails() public {
@@ -1418,6 +1430,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
             block.timestamp + 10000,
             invalidSignature
         );
+        assertEq(tea.nonces(smartWalletOwner.addr), 0, "Nonce should not increment");
     }
 
     /**
@@ -1473,6 +1486,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         assertEq(tea.allowance(address(wallet1), bob.addr), 100, "Wallet1 permit should succeed");
+        assertEq(tea.nonces(address(wallet1)), 1, "Nonce should increment");
 
         // REPLAY ATTACK ATTEMPT: Try to use the same signature for wallet2
         // This should FAIL because wallet2 wraps the digest differently
@@ -1494,8 +1508,9 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // Verify wallet2 allowance was NOT set (replay attack prevented)
         assertEq(tea.allowance(address(wallet2), bob.addr), 0, "Wallet2 permit should fail - replay attack prevented");
+        assertEq(tea.nonces(address(wallet2)), 0, "Nonce should not increment");
     }
-
+    
     // -------------------------- Recovery tests ----------------------------
     function test_recoverToken_onlyTimelock_reverts() public {
         Token_ERC20 token = new Token_ERC20();
