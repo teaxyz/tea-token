@@ -1,0 +1,6 @@
+{
+  "name": "Tea",
+  "version": "1",
+  "chainId": 1,
+  "verifyingContract": "<DEPLOYED_ADDRESS>"
+}

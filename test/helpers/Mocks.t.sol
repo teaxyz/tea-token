@@ -26,3 +26,14 @@ contract Token_ERC721 is MockERC721 {
         _mint(to, tokenId);
     }
 }
+
+/// @notice Mock contract that can receive ETH and self-destruct to force-send its balance
+contract SelfDestructingMock {
+    /// @notice Allows the contract to receive ETH
+    receive() external payable {}
+
+    /// @notice Self-destructs and sends this contract's entire ETH balance to target
+    function selfDestruct(address payable target) external {
+        selfdestruct(target);
+    }
+}

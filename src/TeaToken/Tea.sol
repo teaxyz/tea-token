@@ -52,7 +52,7 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
 
     event RecoveredToken(address indexed token, address indexed to, uint256 amount);
     event RecoveredNFT(address indexed token, address indexed to, uint256 tokenId);
-    event RecoveredEth(address indexed to, uint256 amount);
+    event RecoveredNative(address indexed to, uint256 amount);
 
     /* --------------------------------- Globals -------------------------------- */
 
@@ -96,7 +96,7 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
      *
      * - `spender` cannot be the zero address.
      */
-    function increaseAllowance(address spender, uint256 addedValue) public virtual returns (bool) {
+    function increaseAllowance(address spender, uint256 addedValue) external virtual returns (bool) {
         _approve(_msgSender(), spender, allowance(_msgSender(), spender) + addedValue);
         return true;
     }
@@ -115,7 +115,7 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
      * - `spender` must have allowance for the caller of at least
      * `subtractedValue`.
      */
-    function decreaseAllowance(address spender, uint256 subtractedValue) public virtual returns (bool) {
+    function decreaseAllowance(address spender, uint256 subtractedValue) external virtual returns (bool) {
         uint256 currentAllowance = allowance(_msgSender(), spender);
         require(currentAllowance >= subtractedValue, "ERC20: decreased allowance below zero");
         unchecked {
@@ -134,7 +134,7 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
      * @dev transfers timelocked functions to a different timelock
      * @param newTimelock The address of the new timelock
      */
-    function transferTimelock(address newTimelock) onlyTimelock public virtual {
+    function transferTimelock(address newTimelock) onlyTimelock external virtual {
         timelock = newTimelock;
     }
 
@@ -142,18 +142,18 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
      * @dev Allows the contract owner to recover any ERC-20 tokens
      * that were accidentally sent to this contract.
      * @param tokenAddress The address of the ERC-20 token to recover.
+     * @param amount The amount of the ERC-20 token to recover
      */
-    function recoverToken(address tokenAddress) public virtual onlyTimelock nonReentrant {
+    function recoverToken(address tokenAddress, uint256 amount) external virtual onlyTimelock nonReentrant {
         // Require that the token address is not the contract's own token.
         require(tokenAddress != address(this), CannotRecoverOwnTokens());
 
         IERC20 token = IERC20(tokenAddress);
-        uint256 balance = token.balanceOf(address(this));
 
         // Transfer the tokens from this contract to the specified address.
-        token.transfer(TREASURY_SAFE, balance);
+        token.transfer(TREASURY_SAFE, amount);
         
-        emit RecoveredToken(tokenAddress, TREASURY_SAFE, balance);
+        emit RecoveredToken(tokenAddress, TREASURY_SAFE, amount);
     }
     
     /**
@@ -165,7 +165,7 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
     function recoverNFT(
         address tokenAddress,
         uint256 tokenId
-    ) public virtual onlyTimelock nonReentrant {
+    ) external virtual onlyTimelock nonReentrant {
         // Use the IERC721 interface to safely transfer the NFT from this contract
         IERC721 nft = IERC721(tokenAddress);
         
@@ -179,11 +179,21 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
      * @dev Allow the contract owner to recover Tea tokens
      * @param amount amount of token to sweep
      */
-    function sweepSelf(uint256 amount) public virtual onlyTimelock nonReentrant {
+    function sweepSelf(uint256 amount) external virtual onlyTimelock nonReentrant {
         _transfer(address(this), TREASURY_SAFE, amount);
+    }
+
+    /**
+     * @dev Allows the contract owner to recover any ETH
+     * that was accidentally sent to this contract via self destruct.
+     */
+    function recoverNative(uint256 amount) external virtual onlyTimelock nonReentrant {
+        TREASURY_SAFE.call{value: amount}("");
+
+        emit RecoveredNative(TREASURY_SAFE, amount);
     }
 
     error NativeNotAccepted();
     receive() external payable { revert NativeNotAccepted(); }
-    fallback() external payable { revert(); }
+    fallback() external payable { revert NativeNotAccepted(); }
 }

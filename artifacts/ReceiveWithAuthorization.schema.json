@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ReceiveWithAuthorization",
+  "description": "Schema for ReceiveWithAuthorization struct used in EIP3009",
+  "type": "object",
+  "properties": {
+    "from": { "$ref": "./common.json#/definitions/address" },
+    "to": { "$ref": "./common.json#/definitions/address" },
+    "value": { "$ref": "./common.json#/definitions/uint256" },
+    "validAfter": { "$ref": "./common.json#/definitions/uint256" },
+    "validBefore": { "$ref": "./common.json#/definitions/uint256" },
+    "nonce": { "$ref": "./common.json#/definitions/bytes32" }
+  },
+  "required": ["from", "to", "value", "validAfter", "validBefore", "nonce"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "from": "0x0000000000000000000000000000000000aAaAaAa",
+      "to": "0x0000000000000000000000000000000000bBbBbBb",
+      "value": "250000000000000000",
+      "validAfter": "1622505600",
+      "validBefore": "1625097600",
+      "nonce": "0xabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+    }
+  ]
+}

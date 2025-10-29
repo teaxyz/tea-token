@@ -137,6 +137,7 @@ abstract contract EIP3009 is ERC20Permit {
      */
     function authorizationState(address authorizer, bytes32 nonce)
         external
+        virtual
         view
         returns (bool)
     {
@@ -165,7 +166,7 @@ abstract contract EIP3009 is ERC20Permit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external {
+    ) external virtual {
         bytes memory signature = rsvToSig(r, s, v);
         transferWithAuthorization(from, to, value, validAfter, validBefore, nonce, signature);
     }
@@ -188,7 +189,7 @@ abstract contract EIP3009 is ERC20Permit {
         uint256 validBefore,
         bytes32 nonce,
         bytes memory signature
-    ) public {
+    ) public virtual {
         _transferWithAuthorizationBytes(
             TRANSFER_WITH_AUTHORIZATION_TYPEHASH,
             from,
@@ -226,7 +227,7 @@ abstract contract EIP3009 is ERC20Permit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external {
+    ) external virtual {
         bytes memory signature = rsvToSig(r, s, v);
         receiveWithAuthorization(from, to, value, validAfter, validBefore, nonce, signature);
     }
@@ -249,7 +250,7 @@ abstract contract EIP3009 is ERC20Permit {
         uint256 validBefore,
         bytes32 nonce,
         bytes memory signature
-    ) public {
+    ) public virtual {
         if (to != msg.sender) {
             revert EIP3009CallerMustBePayee(msg.sender, to);
         }
@@ -280,7 +281,7 @@ abstract contract EIP3009 is ERC20Permit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external {
+    ) external virtual {
         bytes memory signature = rsvToSig(r, s, v);
         cancelAuthorization(authorizer, nonce, signature);
     }
@@ -295,7 +296,7 @@ abstract contract EIP3009 is ERC20Permit {
         address authorizer,
         bytes32 nonce,
         bytes memory signature
-    ) public {
+    ) public virtual {
         if (_authorizationStates[authorizer][nonce]) {
             revert EIP3009AuthorizationAlreadyUsed(authorizer, nonce);
         }
@@ -332,7 +333,7 @@ abstract contract EIP3009 is ERC20Permit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) internal {
+    ) internal virtual {
         bytes memory signature = rsvToSig(r, s, v);
         _transferWithAuthorizationBytes(typeHash, from, to, value, validAfter, validBefore, nonce, signature);
     }
@@ -346,7 +347,7 @@ abstract contract EIP3009 is ERC20Permit {
         uint256 validBefore,
         bytes32 nonce,
         bytes memory signature
-    ) internal {
+    ) internal virtual {
         if (block.timestamp <= validAfter) {
             revert EIP3009AuthorizationNotYetValid(validAfter, block.timestamp);
         }

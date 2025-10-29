@@ -71,7 +71,7 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public virtual {
+    ) external virtual {
         bytes memory signature = rsvToSig(r, s, v);
         permit(owner, spender, value, deadline, signature);
     }
@@ -186,7 +186,7 @@ abstract contract ERC20Permit is ERC20, IERC20Permit, EIP712, Nonces {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) public virtual {
+    ) external virtual {
         bytes memory signature = rsvToSig(r, s, v);
         permitBurn(owner, amount, deadline, signature);
     }

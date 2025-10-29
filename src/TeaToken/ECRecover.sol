@@ -30,6 +30,10 @@ pragma solidity 0.8.26;
  * @notice A library that provides a safe ECDSA recovery function
  */
 library ECRecover {
+    error ECRecoverInvalidSignatureSValue();
+    error ECRecoverInvalidSignatureVValue();
+    error ECRecoverInvalidSignature();
+
     /**
      * @notice Recover signer's address from a signed message
      * @dev Adapted from: https://github.com/OpenZeppelin/openzeppelin-contracts/blob/65e4ffde586ec89af3b7e9140bdc9235d1254853/contracts/cryptography/ECDSA.sol
@@ -59,16 +63,16 @@ library ECRecover {
             uint256(s) >
             0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF5D576E7357A4501DDFE92F46681B20A0
         ) {
-            revert("ECRecover: invalid signature 's' value");
+            revert ECRecoverInvalidSignatureSValue();
         }
 
         if (v != 27 && v != 28) {
-            revert("ECRecover: invalid signature 'v' value");
+            revert ECRecoverInvalidSignatureVValue();
         }
 
         // If the signature is valid (and not malleable), return the signer address
         address signer = ecrecover(digest, v, r, s);
-        require(signer != address(0), "ECRecover: invalid signature");
+        require(signer != address(0), ECRecoverInvalidSignature());
 
         return signer;
     }

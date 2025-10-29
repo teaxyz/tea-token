@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Permit",
+  "description": "Schema for Permit struct used in ERC20PermitWithERC1271",
+  "type": "object",
+  "properties": {
+    "owner": { "$ref": "./common.json#/definitions/address" },
+    "spender": { "$ref": "./common.json#/definitions/address" },
+    "value": { "$ref": "./common.json#/definitions/uint256" },
+    "nonce": { "$ref": "./common.json#/definitions/uint256" },
+    "deadline": { "$ref": "./common.json#/definitions/uint256" }
+  },
+  "required": ["owner", "spender", "value", "nonce", "deadline"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "owner": "0x0000000000000000000000000000000000aAaAaAa",
+      "spender": "0x0000000000000000000000000000000000bBbBbBb",
+      "value": "1000000000000000000",
+      "nonce": "0",
+      "deadline": "1735689600"
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import { StdCheats } from "forge-std/StdCheats.sol";
 import { IERC20Errors } from "@openzeppelin/interfaces/draft-IERC6093.sol";
 import { IERC1271 } from "@openzeppelin/interfaces/IERC1271.sol";
 import {MessageHashUtils} from "@openzeppelin/utils/cryptography/MessageHashUtils.sol";
-import { Token_ERC20, Token_ERC721 } from "./helpers/Mocks.t.sol";
+import { Token_ERC20, Token_ERC721, SelfDestructingMock } from "./helpers/Mocks.t.sol";
 
 import { Tea } from "../src/TeaToken/Tea.sol";
 import { ERC1271Wallet } from "./helpers/ERC1271Wallet.sol";
@@ -314,6 +314,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         assertEq(tea.allowance(smartWalletOwner.addr, alice.addr), 1, "Permit should succeed");
+        assertEq(tea.nonces(smartWalletOwner.addr), 1, "Nonce should increment");
     }
 
     function test_ERC1271_permit_standard_reuse_fail() public {
@@ -343,6 +344,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         assertEq(tea.allowance(smartWalletOwner.addr, alice.addr), 1, "Permit should succeed");
+        assertEq(tea.nonces(smartWalletOwner.addr), 1, "Nonce should increment");
         vm.expectRevert();
         vm.prank(smartWalletOwner.addr);
         tea.permit(
@@ -356,6 +358,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         assertEq(tea.allowance(smartWalletOwner.addr, alice.addr), 1, "Permit should Fail");
+        assertEq(tea.nonces(smartWalletOwner.addr), 1, "Nonce should not increment");
     }
 
     function test_ERC1271_permit_erc1271_success() public {
@@ -394,6 +397,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         assertEq(tea.allowance(address(smartWallet), alice.addr), 1, "Permit should succeed");
+        assertEq(tea.nonces(address(smartWallet)), 1, "Nonce should increment");
     }
 
     function test_ERC1271_permit_erc1271_reuse_fail() public {
@@ -431,6 +435,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         assertEq(tea.allowance(address(smartWallet), alice.addr), 1, "Permit should succeed");
+        assertEq(tea.nonces(address(smartWallet)), 1, "Nonce should increment");
 
         vm.prank(smartWalletOwner.addr);
         vm.expectRevert();
@@ -445,6 +450,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         assertEq(tea.allowance(address(smartWallet), alice.addr), 1, "Permit should fail");
+        assertEq(tea.nonces(address(smartWallet)), 1, "Nonce should not increment");
     }
 
     function test_ERC1271_permit_erc1271_contract_does_not_exist() public {
@@ -475,6 +481,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         assertEq(tea.allowance(smartWalletOwner.addr, alice.addr), 0, "Permit should fail");
+        assertEq(tea.nonces(smartWalletOwner.addr), 0, "Nonce should not increment");
     }
 
     function test_ERC1271_permit_erc1271_attacker() public {
@@ -505,6 +512,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         assertEq(tea.allowance(address(smartWallet), alice.addr), 0, "Permit should fail");
+        assertEq(tea.nonces(address(smartWallet)), 0, "Nonce should not increment");
     }
 
     // ========================================
@@ -609,6 +617,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         assertEq(tea.balanceOf(alice.addr), 700);
         assertEq(tea.balanceOf(bob.addr), 300);
         assertEq(tea.allowance(alice.addr, bob.addr), 200); // 500 - 300 = 200 remaining
+        assertEq(tea.nonces(alice.addr), 1, "Nonce should increment");
     }
 
     function test_permit_invalidNonce_reverts() public {
@@ -631,6 +640,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Should revert with invalid signer
         vm.expectRevert();
         tea.permit(alice.addr, bob.addr, 100, deadline, v, r, s);
+        assertEq(tea.nonces(alice.addr), 0, "Nonce should not increment");
     }
 
     // ==================== permitBurn Tests ====================
@@ -661,6 +671,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         tea.permitBurn(alice.addr, amount, deadline, v, r, s);
 
         assertEq(tea.balanceOf(alice.addr), 1000 - amount);
+        assertEq(tea.nonces(alice.addr), 1, "Nonce should increment");
     }
 
     function test_permitBurn_replay_fails() public {
@@ -688,10 +699,12 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // First call succeeds
         tea.permitBurn(alice.addr, amount, deadline, v, r, s);
+        assertEq(tea.nonces(alice.addr), 1, "Nonce should increment");
 
         // Second call with same signature should fail (nonce consumed)
         vm.expectRevert();
         tea.permitBurn(alice.addr, amount, deadline, v, r, s);
+        assertEq(tea.nonces(alice.addr), 1, "Nonce should not increment");
     }
 
     function test_permitBurn_expiredDeadline_reverts() public {
@@ -713,6 +726,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612ExpiredSignature.selector, expiredDeadline));
         tea.permitBurn(alice.addr, amount, expiredDeadline, v, r, s);
+        assertEq(tea.nonces(alice.addr), 0, "Nonce should not increment");
     }
 
     function test_permitBurn_invalidSigner_reverts() public {
@@ -740,6 +754,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         vm.expectRevert();
         tea.permitBurn(alice.addr, amount, deadline, v, r, s);
+        assertEq(tea.nonces(alice.addr), 0, "Nonce should not increment");
     }
 
     function test_permitBurn_erc1271_success() public {
@@ -778,6 +793,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         tea.permitBurn(address(wallet), amount, deadline, signature);
 
         assertEq(tea.balanceOf(address(wallet)), 1000 - amount);
+        assertEq(tea.nonces(address(wallet)), 1, "Nonce should increment");
     }
 
     // ========== EIP-3009 Tests ==========
@@ -1358,6 +1374,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
             bytes32(uint256(10))
         );
 
+        vm.prank(passkeyOwner.addr);
         vm.expectRevert();
         tea.permit(
             address(passkeyWallet),
@@ -1487,7 +1504,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Call from a non-timelock address should revert
         vm.prank(initialGovernor.addr);
         vm.expectRevert();
-        tea.recoverToken(address(token));
+        tea.recoverToken(address(token), 1);
     }
 
     function test_recoverToken_success_sendsToTreasury() public {
@@ -1496,7 +1513,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // Call from timelock should succeed
         vm.prank(tea.timelock());
-        tea.recoverToken(address(token));
+        tea.recoverToken(address(token), 1);
 
         assertEq(token.balanceOf(tea.TREASURY_SAFE()), 1);
         assertEq(token.balanceOf(address(tea)), 0);
@@ -1541,6 +1558,32 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         assertEq(tea.balanceOf(tea.TREASURY_SAFE()), 1);
         assertEq(tea.balanceOf(address(tea)), 0);
+    }
+
+    function test_recoverEth_afterSelfDestruct() public {
+        // Deploy mock that can selfdestruct
+        SelfDestructingMock selfDestructingMock = new SelfDestructingMock();
+    
+        // Send some ETH to the mock contract
+        uint256 amount = 1 ether;
+        vm.deal(address(selfDestructingMock), amount);
+        assertEq(address(selfDestructingMock).balance, amount);
+    
+        // Force-send ETH to tea token contract via selfdestruct
+        selfDestructingMock.selfDestruct(payable(address(tea)));
+        assertEq(address(tea).balance, amount);
+    
+        // Only timelock can recover
+        vm.prank(initialGovernor.addr);
+        vm.expectRevert();
+        tea.recoverNative(amount);
+    
+        // Recover the forced ETH transfer through timelock
+        vm.prank(tea.timelock());
+        tea.recoverNative(amount);
+    
+        assertEq(address(tea.TREASURY_SAFE()).balance, amount);
+        assertEq(address(tea).balance, 0);
     }
 
     function test_EIP5267_Domain() public {
