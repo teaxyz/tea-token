@@ -1,6 +1,8 @@
 {
-  "name": "Tea",
+  "name": "Tea token",
   "version": "1",
   "chainId": 1,
-  "verifyingContract": "<DEPLOYED_ADDRESS>"
+  "verifyingContract": "<DEPLOYED_ADDRESS>",
+  "salt": 0,
+  "extensions": []
 }

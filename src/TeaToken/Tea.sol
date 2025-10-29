@@ -50,6 +50,11 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
      */
     error CallerIsNotTimelock();
 
+    /**
+     * @dev Recover native failed
+     */
+    error RecoverNativeFailed(address to, uint256 amount);
+
     event RecoveredToken(address indexed token, address indexed to, uint256 amount);
     event RecoveredNFT(address indexed token, address indexed to, uint256 tokenId);
     event RecoveredNative(address indexed to, uint256 amount);
@@ -188,7 +193,8 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
      * that was accidentally sent to this contract via self destruct.
      */
     function recoverNative(uint256 amount) external virtual onlyTimelock nonReentrant {
-        TREASURY_SAFE.call{value: amount}("");
+        (bool ok, ) = TREASURY_SAFE.call{value: amount}("");
+        if (!ok) revert RecoverNativeFailed(TREASURY_SAFE, amount);
 
         emit RecoveredNative(TREASURY_SAFE, amount);
     }

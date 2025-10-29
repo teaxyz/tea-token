@@ -39,4 +39,4 @@
 
 [rpc_endpoints]
   localhost = "http://localhost:8545"
-  mainnet = "https://eth-mainnet.g.alchemy.com/v2/${API_KEY_ALCHEMY}"
+  mainnet = "https://mainnet.infura.io/v3/b6db978cd8244b1083052645d9375a6d"

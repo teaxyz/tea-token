@@ -1560,7 +1560,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         assertEq(tea.balanceOf(address(tea)), 0);
     }
 
-    function test_recoverEth_afterSelfDestruct() public {
+    function test_recoverNative_afterSelfDestruct() public {
         // Deploy mock that can selfdestruct
         SelfDestructingMock selfDestructingMock = new SelfDestructingMock();
     
@@ -1575,15 +1575,35 @@ contract TeaTokenTest is PRBTest, StdCheats {
     
         // Only timelock can recover
         vm.prank(initialGovernor.addr);
-        vm.expectRevert();
+        vm.expectRevert(abi.encodeWithSelector(Tea.CallerIsNotTimelock.selector));
         tea.recoverNative(amount);
-    
+
         // Recover the forced ETH transfer through timelock
         vm.prank(tea.timelock());
         tea.recoverNative(amount);
     
         assertEq(address(tea.TREASURY_SAFE()).balance, amount);
         assertEq(address(tea).balance, 0);
+    }   
+
+    function test_recoverNative_afterSelfDestruct_invalid_amount() public {
+        // Deploy mock that can selfdestruct
+        SelfDestructingMock selfDestructingMock = new SelfDestructingMock();
+        address safe = tea.TREASURY_SAFE();
+    
+        // Send some ETH to the mock contract
+        uint256 amount = 1 ether;
+        vm.deal(address(selfDestructingMock), amount);
+        assertEq(address(selfDestructingMock).balance, amount);
+    
+        // Force-send ETH to tea token contract via selfdestruct
+        selfDestructingMock.selfDestruct(payable(address(tea)));
+        assertEq(address(tea).balance, amount);
+        
+        // Recover too much the forced ETH transfer through timelock
+        vm.prank(tea.timelock());
+        vm.expectRevert(abi.encodeWithSelector(Tea.RecoverNativeFailed.selector, safe, amount * 2));
+        tea.recoverNative(amount * 2);
     }
 
     function test_EIP5267_Domain() public {
@@ -1605,5 +1625,3 @@ contract TeaTokenTest is PRBTest, StdCheats {
         assertEq(extensions.length, 0);
     }
 }
-
-
