@@ -37,3 +37,29 @@ contract SelfDestructingMock {
         selfdestruct(target);
     }
 }
+
+/// @notice Mock non-standard ERC20 token that returns false on transfer failure
+/// @dev Simulates tokens like USDT, BNB that don't revert, just return false
+contract NonStandardToken {
+    mapping(address => uint256) public balanceOf;
+    bool public shouldFail;
+
+    function mint(address to, uint256 amount) external {
+        balanceOf[to] += amount;
+    }
+
+    function setShouldFail(bool _shouldFail) external {
+        shouldFail = _shouldFail;
+    }
+
+    /// @notice Returns false instead of reverting on failure (non-standard behavior)
+    function transfer(address to, uint256 amount) external returns (bool) {
+        if (shouldFail) {
+            return false; // Silent failure - doesn't revert!
+        }
+        require(balanceOf[msg.sender] >= amount, "Insufficient balance");
+        balanceOf[msg.sender] -= amount;
+        balanceOf[to] += amount;
+        return true;
+    }
+}
