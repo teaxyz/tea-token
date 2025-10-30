@@ -1,5 +1,5 @@
 {
-  "name": "Tea token",
+  "name": "Tea Token",
   "version": "1",
   "chainId": 1,
   "verifyingContract": "<DEPLOYED_ADDRESS>",
