@@ -1534,37 +1534,6 @@ contract TeaTokenTest is PRBTest, StdCheats {
         assertEq(token.balanceOf(address(tea)), 0);
     }
 
-    function test_recoverToken_nonStandardToken_withoutSafeERC20_silentFailure() public {
-        // PROBLEM DEMONSTRATION: Non-standard tokens can cause silent failures
-        // 
-        // Scenario: User accidentally sends USDT (or similar non-standard token) to Tea contract
-        // Team tries to recover it via recoverToken()
-        // Result: Transaction succeeds, event emits, but tokens don't move!
-        //
-        // Why? Non-standard tokens like USDT, BNB, OMG return false instead of reverting on failure.
-        // Without SafeERC20, the bare transfer() call ignores the return value.
-        
-        NonStandardToken nonStandardToken = new NonStandardToken();
-        nonStandardToken.mint(address(tea), 1000);
-        
-        // Set token to fail transfers (returns false instead of reverting)
-        nonStandardToken.setShouldFail(true);
-
-        uint256 treasuryBalanceBefore = nonStandardToken.balanceOf(tea.TREASURY_SAFE());
-        uint256 teaBalanceBefore = nonStandardToken.balanceOf(address(tea));
-
-        // WITHOUT SafeERC20: This transaction SUCCEEDS even though transfer returns false
-        vm.prank(tea.timelock());
-        tea.recoverToken(address(nonStandardToken), 1000);
-
-        // VERIFY THE PROBLEM: Tokens stayed in tea contract (silent failure!)
-        assertEq(nonStandardToken.balanceOf(address(tea)), teaBalanceBefore, "PROBLEM: Tokens should have moved but stayed in tea contract");
-        assertEq(nonStandardToken.balanceOf(tea.TREASURY_SAFE()), treasuryBalanceBefore, "PROBLEM: Treasury should have received tokens but didn't");
-        
-        // The RecoveredToken event was emitted claiming success, but no tokens moved!
-        // This is why SafeERC20.safeTransfer() is important - it checks the return value and reverts.
-    }
-
     function test_recoverToken_nonStandardToken_withSafeERC20_reverts() public {
         // This test documents what SHOULD happen with SafeERC20
         // (Currently will pass showing the silent failure, but with SafeERC20 it would revert as expected)
@@ -1575,12 +1544,16 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // With SafeERC20, this would expectRevert instead of succeeding silently
         // Uncomment below line when SafeERC20 is adopted:
-        // vm.expectRevert();
         
+        uint256 treasuryBalanceBefore = nonStandardToken.balanceOf(tea.TREASURY_SAFE());
+        uint256 teaBalanceBefore = nonStandardToken.balanceOf(address(tea));
+
         vm.prank(tea.timelock());
+        vm.expectRevert();
         tea.recoverToken(address(nonStandardToken), 1000);
-        
-        // TODO: When SafeERC20 is adopted, this test should be updated to expect revert
+
+        assertEq(nonStandardToken.balanceOf(address(tea)), teaBalanceBefore, "PROBLEM: Tokens should have moved but stayed in tea contract");
+        assertEq(nonStandardToken.balanceOf(tea.TREASURY_SAFE()), treasuryBalanceBefore, "PROBLEM: Treasury should have received tokens but didn't");
     }
 
     function test_recoverNFT_onlyTimelock_reverts() public {

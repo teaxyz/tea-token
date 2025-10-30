@@ -22,6 +22,7 @@ import { IERC20 } from "@openzeppelin/interfaces/IERC20.sol";
 import { IERC721 } from "@openzeppelin/interfaces/IERC721.sol";
 import { Ownable } from "@openzeppelin/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/utils/ReentrancyGuard.sol";
+import {SafeERC20} from "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
 /* solhint-enable no-unused-import */
 import { Ownable2Step } from "@openzeppelin/access/Ownable2Step.sol";
 import { ERC20Permit } from "./ERC20PermitWithERC1271.sol";
@@ -29,6 +30,9 @@ import { EIP3009 } from "./EIP3009.sol";
 import { ERC20Burnable } from "@openzeppelin/token/ERC20/extensions/ERC20Burnable.sol";
 
 contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
+    // Add using directive (at contract level)
+    using SafeERC20 for IERC20;
+
     bytes4 public constant ERC1271_MAGIC_VALUE = 0x1626ba7e;
 
     bytes4 constant ERC1271_INVALID_SIGNATURE = 0xffffffff;
@@ -156,7 +160,7 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
         IERC20 token = IERC20(tokenAddress);
 
         // Transfer the tokens from this contract to the specified address.
-        token.transfer(TREASURY_SAFE, amount);
+        token.safeTransfer(TREASURY_SAFE, amount);
         
         emit RecoveredToken(tokenAddress, TREASURY_SAFE, amount);
     }
