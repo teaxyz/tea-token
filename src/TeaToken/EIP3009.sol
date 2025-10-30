@@ -24,7 +24,6 @@
 
 pragma solidity 0.8.26;
 
-import { ECRecover } from "./ECRecover.sol";
 import { ERC20Permit } from "./ERC20PermitWithERC1271.sol";
 import { IERC1271 } from "@openzeppelin/interfaces/IERC1271.sol";
 
