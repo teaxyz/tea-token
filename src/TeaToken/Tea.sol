@@ -71,8 +71,8 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
     /* ------------------------------- Constructor ------------------------------ */
 
     constructor(address initialGovernor_, address timelock_)
-        ERC20("Tea Token", "TEA")
-        ERC20Permit("Tea Token")
+        ERC20("TEA", "TEA")
+        ERC20Permit("TEA")
         Ownable(initialGovernor_)
     {
         timelock = timelock_;

@@ -22,7 +22,7 @@ Example input values:
 - value: "1000000000000000000"  # 1e18 encoded as decimal string in JSON; on-chain it's uint256
 - nonce: 0  (uint256)
 - deadline: 1735689600  (2035-01-01T00:00:00Z)
-- token name: "Tea Token"
+- token name: "TEA"
 - chainId: 1
 - verifyingContract: 0x3333333333333333333333333333333333333333
 
@@ -147,7 +147,7 @@ Example input values:
 - amount: "2000000000000000000"  # 2 tokens
 - nonce: 0  (uint256)
 - deadline: 1735689600
-- token name: "Tea Token"
+- token name: "TEA"
 - chainId: 1
 - verifyingContract: 0x3333333333333333333333333333333333333333
 
