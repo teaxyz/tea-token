@@ -4,8 +4,7 @@ pragma solidity 0.8.26;
 import { Tea } from "./Tea.sol";
 import { MintManager } from "./MintManager.sol";
 import { Create2 } from "@openzeppelin/utils/Create2.sol";
-import { TimelockController } from "@openzeppelin/contracts/governance/TimelockController.sol";
-
+import { TimelockController } from "@openzeppelin/governance/TimelockController.sol";
 
 /*                                      _@@                                       
  _@                @_              _@@@@@                                       
