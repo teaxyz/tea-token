@@ -317,6 +317,35 @@ contract TeaTokenTest is PRBTest, StdCheats {
         assertEq(tea.nonces(smartWalletOwner.addr), 1, "Nonce should increment");
     }
 
+    /// @notice EIP-7702 style test: EOA signs a 65-byte bytes signature and uses the bytes overload of permit
+    function test_EIP7702_permit_EOA_bytesSignature_success() public {
+        // Build permit digest for alice -> bob
+        bytes32 messageHash = keccak256(
+            abi.encode(
+                tea.PERMIT_TYPEHASH(),
+                alice.addr,
+                bob.addr,
+                1,
+                tea.nonces(alice.addr),
+                block.timestamp + 10000
+            )
+        );
+        bytes32 digest = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
+
+        // Sign digest with alice EOA
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, digest);
+
+        // Pack into bytes signature (r || s || v)
+        bytes memory signature = packSignature(r, s, v);
+
+        // Call bytes-overload permit
+        tea.permit(alice.addr, bob.addr, 1, block.timestamp + 10000, signature);
+
+        // Expect allowance and nonce to update
+        assertEq(tea.allowance(alice.addr, bob.addr), 1, "Permit (bytes) should succeed for EOA");
+        assertEq(tea.nonces(alice.addr), 1, "Nonce should increment after successful permit");
+    }
+
     function test_ERC1271_permit_standard_reuse_fail() public {
         // Create Hash
         bytes32 messageHash = keccak256(
