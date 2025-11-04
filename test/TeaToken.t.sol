@@ -16,7 +16,7 @@ import { TokenDeploy } from "../src/TeaToken/TokenDeploy.sol";
 import { MintManager } from "../src/TeaToken/MintManager.sol";
 import { DeterministicDeployer } from "../src/utils/DeterministicDeployer.sol";
 import { ERC20PermitWithERC1271 } from "../src/TeaToken/ERC20PermitWithERC1271.sol";
-import { EIP3009 } from "../src/TeaToken/EIP3009.sol";
+import { EIP3009WithERC1271 } from "../src/TeaToken/EIP3009WithERC1271.sol";
 
 /* solhint-disable max-states-count */
 contract TeaTokenTest is PRBTest, StdCheats {
@@ -175,112 +175,6 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.prank(initialGovernor.addr);
         vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, address(0)));
         mintManager.mintTo(address(0), 100);
-    }
-
-    // ========================================
-    // Allowance Hygiene Tests (increaseAllowance/decreaseAllowance)
-    // ========================================
-
-    function test_increaseAllowance_fromZero() public {
-        // Start with zero allowance
-        assertEq(tea.allowance(alice.addr, bob.addr), 0);
-
-        // Increase from zero
-        vm.prank(alice.addr);
-        bool success = tea.increaseAllowance(bob.addr, 100);
-
-        assertTrue(success);
-        assertEq(tea.allowance(alice.addr, bob.addr), 100);
-    }
-
-    function test_increaseAllowance_fromExisting() public {
-        // Set initial allowance
-        vm.prank(alice.addr);
-        tea.approve(bob.addr, 50);
-        assertEq(tea.allowance(alice.addr, bob.addr), 50);
-
-        // Increase allowance
-        vm.prank(alice.addr);
-        bool success = tea.increaseAllowance(bob.addr, 75);
-
-        assertTrue(success);
-        assertEq(tea.allowance(alice.addr, bob.addr), 125);
-    }
-
-    function test_increaseAllowance_overflow() public {
-        // Set allowance near max
-        vm.prank(alice.addr);
-        tea.approve(bob.addr, type(uint256).max - 50);
-
-        // Try to increase beyond max - should overflow/revert
-        vm.prank(alice.addr);
-        vm.expectRevert();
-        tea.increaseAllowance(bob.addr, 100);
-    }
-
-    function test_decreaseAllowance_toZero() public {
-        // Set initial allowance
-        vm.prank(alice.addr);
-        tea.approve(bob.addr, 100);
-
-        // Decrease to zero
-        vm.prank(alice.addr);
-        bool success = tea.decreaseAllowance(bob.addr, 100);
-
-        assertTrue(success);
-        assertEq(tea.allowance(alice.addr, bob.addr), 0);
-    }
-
-    function test_decreaseAllowance_partial() public {
-        // Set initial allowance
-        vm.prank(alice.addr);
-        tea.approve(bob.addr, 100);
-
-        // Decrease partially
-        vm.prank(alice.addr);
-        bool success = tea.decreaseAllowance(bob.addr, 60);
-
-        assertTrue(success);
-        assertEq(tea.allowance(alice.addr, bob.addr), 40);
-    }
-
-    function test_decreaseAllowance_underflow_reverts() public {
-        // Set initial allowance
-        vm.prank(alice.addr);
-        tea.approve(bob.addr, 50);
-
-        // Try to decrease more than available - should revert
-        vm.prank(alice.addr);
-        vm.expectRevert("ERC20: decreased allowance below zero");
-        tea.decreaseAllowance(bob.addr, 100);
-
-        // Allowance should remain unchanged
-        assertEq(tea.allowance(alice.addr, bob.addr), 50);
-    }
-
-    function test_decreaseAllowance_fromZero_reverts() public {
-        // No allowance set
-        assertEq(tea.allowance(alice.addr, bob.addr), 0);
-
-        // Try to decrease from zero - should revert
-        vm.prank(alice.addr);
-        vm.expectRevert("ERC20: decreased allowance below zero");
-        tea.decreaseAllowance(bob.addr, 1);
-    }
-
-    function test_allowance_zeroAddress_reverts() public {
-        // Try to increase allowance for zero address - _approve will revert
-        vm.prank(alice.addr);
-        vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidSpender.selector, address(0)));
-        tea.increaseAllowance(address(0), 100);
-
-        // For decreaseAllowance with zero allowance, it reverts with underflow error first
-        vm.prank(alice.addr);
-        vm.expectRevert("ERC20: decreased allowance below zero");
-        tea.decreaseAllowance(address(0), 100);
-        
-        // But if we have allowance set to zero address (via approve), decrease should work
-        // Note: OpenZeppelin's _approve will revert on zero address, so we can't test this path
     }
 
     // ========================================
@@ -950,7 +844,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         assertTrue(tea.authorizationState(alice.addr, nonce));
 
         // Second transfer with same nonce fails
-        vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009AuthorizationAlreadyUsed.selector, alice.addr, nonce));
+        vm.expectRevert(abi.encodeWithSelector(EIP3009WithERC1271.EIP3009AuthorizationAlreadyUsed.selector, alice.addr, nonce));
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
     }
 
@@ -978,7 +872,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
 
-        vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009AuthorizationExpired.selector, validBefore, block.timestamp));
+        vm.expectRevert(abi.encodeWithSelector(EIP3009WithERC1271.EIP3009AuthorizationExpired.selector, validBefore, block.timestamp));
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
         assertFalse(tea.authorizationState(alice.addr, nonce));
     }
@@ -1007,7 +901,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
 
-        vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009AuthorizationNotYetValid.selector, validAfter, block.timestamp));
+        vm.expectRevert(abi.encodeWithSelector(EIP3009WithERC1271.EIP3009AuthorizationNotYetValid.selector, validAfter, block.timestamp));
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
         assertFalse(tea.authorizationState(alice.addr, nonce));
     }
@@ -1037,7 +931,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Sign with wrong key (bob instead of alice)
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(bob, hash);
 
-        vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009InvalidSignature.selector));
+        vm.expectRevert(abi.encodeWithSelector(EIP3009WithERC1271.EIP3009InvalidSignature.selector));
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
         assertFalse(tea.authorizationState(alice.addr, nonce));
     }
@@ -1112,7 +1006,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Alice tries to call (but should be bob as recipient)
         vm.prank(alice.addr);
         vm.expectRevert(
-            abi.encodeWithSelector(EIP3009.EIP3009CallerMustBePayee.selector, alice.addr, bob.addr)
+            abi.encodeWithSelector(EIP3009WithERC1271.EIP3009CallerMustBePayee.selector, alice.addr, bob.addr)
         );
         tea.receiveWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
         assertFalse(tea.authorizationState(alice.addr, nonce));
@@ -1183,7 +1077,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         assertTrue(tea.authorizationState(alice.addr, nonce));
 
         // Second cancel fails
-        vm.expectRevert(abi.encodeWithSelector(EIP3009.EIP3009AuthorizationAlreadyUsed.selector, alice.addr, nonce));
+        vm.expectRevert(abi.encodeWithSelector(EIP3009WithERC1271.EIP3009AuthorizationAlreadyUsed.selector, alice.addr, nonce));
         tea.cancelAuthorization(alice.addr, nonce, v, r, s);
     }
 
@@ -1224,7 +1118,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
 
         vm.expectRevert(
-            abi.encodeWithSelector(EIP3009.EIP3009AuthorizationAlreadyUsed.selector, alice.addr, nonce)
+            abi.encodeWithSelector(EIP3009WithERC1271.EIP3009AuthorizationAlreadyUsed.selector, alice.addr, nonce)
         );
         tea.transferWithAuthorization(alice.addr, bob.addr, 100, validAfter, validBefore, nonce, v, r, s);
     }

@@ -26,10 +26,10 @@ import {SafeERC20} from "@openzeppelin/token/ERC20/utils/SafeERC20.sol";
 /* solhint-enable no-unused-import */
 import { Ownable2Step } from "@openzeppelin/access/Ownable2Step.sol";
 import { ERC20PermitWithERC1271 } from "./ERC20PermitWithERC1271.sol";
-import { EIP3009 } from "./EIP3009.sol";
+import { EIP3009WithERC1271 } from "./EIP3009WithERC1271.sol";
 import { ERC20Burnable } from "@openzeppelin/token/ERC20/extensions/ERC20Burnable.sol";
 
-contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
+contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20Burnable, ReentrancyGuard {
     // Add using directive (at contract level)
     using SafeERC20 for IERC20;
 
