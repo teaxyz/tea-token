@@ -1435,11 +1435,11 @@ contract TeaTokenTest is PRBTest, StdCheats {
     }
     
     // -------------------------- Recovery tests ----------------------------
-    function test_recoverToken_onlyTimelock_reverts() public {
+    function test_recoverToken_onlyRecoverer_reverts() public {
         Token_ERC20 token = new Token_ERC20();
         token.mint(address(tea), 1);
 
-        // Call from a non-timelock address should revert
+        // Call from a non-recoverer address should revert
         vm.prank(initialGovernor.addr);
         vm.expectRevert();
         tea.recoverToken(address(token), 1);
@@ -1449,8 +1449,8 @@ contract TeaTokenTest is PRBTest, StdCheats {
         Token_ERC20 token = new Token_ERC20();
         token.mint(address(tea), 1);
 
-        // Call from timelock should succeed
-        vm.prank(tea.timelock());
+        // Call from recoverer should succeed
+        vm.prank(tea.recoverer());
         tea.recoverToken(address(token), 1);
 
         assertEq(token.balanceOf(tea.TREASURY_SAFE()), 1);
@@ -1471,7 +1471,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         uint256 treasuryBalanceBefore = nonStandardToken.balanceOf(tea.TREASURY_SAFE());
         uint256 teaBalanceBefore = nonStandardToken.balanceOf(address(tea));
 
-        vm.prank(tea.timelock());
+        vm.prank(tea.recoverer());
         vm.expectRevert();
         tea.recoverToken(address(nonStandardToken), 1000);
 
@@ -1479,7 +1479,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         assertEq(nonStandardToken.balanceOf(tea.TREASURY_SAFE()), treasuryBalanceBefore, "PROBLEM: Treasury should have received tokens but didn't");
     }
 
-    function test_recoverNFT_onlyTimelock_reverts() public {
+    function test_recoverNFT_onlyRecoverer_reverts() public {
         Token_ERC721 nft = new Token_ERC721();
         nft.mint(address(tea), 1337);
 
@@ -1492,14 +1492,14 @@ contract TeaTokenTest is PRBTest, StdCheats {
         Token_ERC721 nft = new Token_ERC721();
         nft.mint(address(tea), 2025);
 
-        vm.prank(tea.timelock());
+        vm.prank(tea.recoverer());
         tea.recoverNFT(address(nft), 2025);
 
         assertEq(nft.ownerOf(2025), tea.TREASURY_SAFE());
     }
 
-    function test_recoverEth_onlyTimelock_reverts() public {
-        // Non-timelock call should revert
+    function test_recoverEth_onlyRecoverer_reverts() public {
+        // Non-recoverer call should revert
         vm.prank(initialGovernor.addr);
         tea.transfer(address(tea), 1);
 
@@ -1508,12 +1508,12 @@ contract TeaTokenTest is PRBTest, StdCheats {
         tea.sweepSelf(1);
     }
 
-    function test_recoverEth_onlyTimelock_success_transfers() public {
-        // Timelock can recover TEA
+    function test_recoverEth_onlyRecoverer_success_transfers() public {
+        // Recoverer can recover TEA
         vm.prank(initialGovernor.addr);
         tea.transfer(address(tea), 1);
 
-        vm.prank(tea.timelock());
+        vm.prank(tea.recoverer());
         tea.sweepSelf(1);
 
         assertEq(tea.balanceOf(tea.TREASURY_SAFE()), 1);
@@ -1533,13 +1533,13 @@ contract TeaTokenTest is PRBTest, StdCheats {
         selfDestructingMock.selfDestruct(payable(address(tea)));
         assertEq(address(tea).balance, amount);
     
-        // Only timelock can recover
+        // Only recoverer can recover
         vm.prank(initialGovernor.addr);
-        vm.expectRevert(abi.encodeWithSelector(Tea.CallerIsNotTimelock.selector));
+        vm.expectRevert(abi.encodeWithSelector(Tea.CallerIsNotRecoverer.selector));
         tea.recoverNative(amount);
 
-        // Recover the forced ETH transfer through timelock
-        vm.prank(tea.timelock());
+        // Recover the forced ETH transfer through recoverer
+        vm.prank(tea.recoverer());
         tea.recoverNative(amount);
     
         assertEq(address(tea.TREASURY_SAFE()).balance, amount);
@@ -1560,8 +1560,8 @@ contract TeaTokenTest is PRBTest, StdCheats {
         selfDestructingMock.selfDestruct(payable(address(tea)));
         assertEq(address(tea).balance, amount);
         
-        // Recover too much the forced ETH transfer through timelock
-        vm.prank(tea.timelock());
+        // Recover too much the forced ETH transfer through recoverer
+        vm.prank(tea.recoverer());
         vm.expectRevert(abi.encodeWithSelector(Tea.RecoverNativeFailed.selector, safe, amount * 2));
         tea.recoverNative(amount * 2);
     }

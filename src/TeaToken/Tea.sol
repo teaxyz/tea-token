@@ -37,7 +37,7 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
 
     bytes4 constant ERC1271_INVALID_SIGNATURE = 0xffffffff;
 
-    address public timelock;
+    address public recoverer;
     address public constant TREASURY_SAFE = 0xcDb68686290310dD8623371E1db53157dB6b8cA1;
 
     /* -------------------------------- Constants ------------------------------- */
@@ -50,9 +50,9 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
     error CannotRecoverOwnTokens();
 
     /**
-     * @dev Invalid owner for timelock transactions
+     * @dev Invalid owner for recover transactions
      */
-    error CallerIsNotTimelock();
+    error CallerIsNotRecoverer();
 
     /**
      * @dev Recover native failed
@@ -70,12 +70,12 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
 
     /* ------------------------------- Constructor ------------------------------ */
 
-    constructor(address initialGovernor_, address timelock_)
+    constructor(address initialGovernor_, address recoverer_)
         ERC20("TEA", "TEA")
         ERC20PermitWithERC1271("TEA")
         Ownable(initialGovernor_)
     {
-        timelock = timelock_;
+        recoverer = recoverer_;
         totalMinted = INITIAL_SUPPLY;
 
         _mint(initialGovernor_, INITIAL_SUPPLY);
@@ -93,17 +93,9 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
         _mint(account, value);
     }
 
-    modifier onlyTimelock() {
-        require(msg.sender == timelock, CallerIsNotTimelock());
+    modifier onlyRecoverer() {
+        require(msg.sender == recoverer, CallerIsNotRecoverer());
         _;
-    }
-
-    /**
-     * @dev transfers timelocked functions to a different timelock
-     * @param newTimelock The address of the new timelock
-     */
-    function transferTimelock(address newTimelock) onlyTimelock external virtual {
-        timelock = newTimelock;
     }
 
     /**
@@ -112,7 +104,7 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
      * @param tokenAddress The address of the ERC-20 token to recover.
      * @param amount The amount of the ERC-20 token to recover
      */
-    function recoverToken(address tokenAddress, uint256 amount) external virtual onlyTimelock nonReentrant {
+    function recoverToken(address tokenAddress, uint256 amount) external virtual onlyRecoverer nonReentrant {
         // Require that the token address is not the contract's own token.
         require(tokenAddress != address(this), CannotRecoverOwnTokens());
 
@@ -133,7 +125,7 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
     function recoverNFT(
         address tokenAddress,
         uint256 tokenId
-    ) external virtual onlyTimelock nonReentrant {
+    ) external virtual onlyRecoverer nonReentrant {
         // Use the IERC721 interface to safely transfer the NFT from this contract
         IERC721 nft = IERC721(tokenAddress);
         
@@ -147,7 +139,7 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
      * @dev Allow the contract owner to recover Tea tokens
      * @param amount amount of token to sweep
      */
-    function sweepSelf(uint256 amount) external virtual onlyTimelock nonReentrant {
+    function sweepSelf(uint256 amount) external virtual onlyRecoverer nonReentrant {
         _transfer(address(this), TREASURY_SAFE, amount);
     }
 
@@ -155,7 +147,7 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
      * @dev Allows the governance timelockcontroller to recover any ETH
      * that was accidentally sent to this contract via self destruct.
      */
-    function recoverNative(uint256 amount) external virtual onlyTimelock nonReentrant {
+    function recoverNative(uint256 amount) external virtual onlyRecoverer nonReentrant {
         (bool ok, ) = TREASURY_SAFE.call{value: amount}("");
         if (!ok) revert RecoverNativeFailed(TREASURY_SAFE, amount);
 
