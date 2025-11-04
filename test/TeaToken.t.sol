@@ -15,7 +15,7 @@ import { PasskeyWallet } from "./helpers/PasskeyWallet.sol";
 import { TokenDeploy } from "../src/TeaToken/TokenDeploy.sol";
 import { MintManager } from "../src/TeaToken/MintManager.sol";
 import { DeterministicDeployer } from "../src/utils/DeterministicDeployer.sol";
-import { ERC20Permit } from "../src/TeaToken/ERC20PermitWithERC1271.sol";
+import { ERC20PermitWithERC1271 } from "../src/TeaToken/ERC20PermitWithERC1271.sol";
 import { EIP3009 } from "../src/TeaToken/EIP3009.sol";
 
 /* solhint-disable max-states-count */
@@ -529,7 +529,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(bob, hash);
 
         vm.prank(smartWalletOwner.addr);
-        vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612InvalidSigner.selector, bob.addr, address(smartWallet)));
+        vm.expectRevert(abi.encodeWithSelector(ERC20PermitWithERC1271.ERC2612InvalidSigner.selector, bob.addr, address(smartWallet)));
         tea.permit(
             address(smartWallet),
             alice.addr,
@@ -565,7 +565,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
 
         // Should revert with ERC2612ExpiredSignature
-        vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612ExpiredSignature.selector, expiredDeadline));
+        vm.expectRevert(abi.encodeWithSelector(ERC20PermitWithERC1271.ERC2612ExpiredSignature.selector, expiredDeadline));
         tea.permit(alice.addr, bob.addr, 100, expiredDeadline, v, r, s);
         assertEq(tea.nonces(alice.addr), 0, "Nonce should not increment");
     }
@@ -756,7 +756,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         bytes32 hash = MessageHashUtils.toTypedDataHash(tea.DOMAIN_SEPARATOR(), messageHash);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(alice, hash);
 
-        vm.expectRevert(abi.encodeWithSelector(ERC20Permit.ERC2612ExpiredSignature.selector, expiredDeadline));
+        vm.expectRevert(abi.encodeWithSelector(ERC20PermitWithERC1271.ERC2612ExpiredSignature.selector, expiredDeadline));
         tea.permitBurn(alice.addr, amount, expiredDeadline, v, r, s);
         assertEq(tea.nonces(alice.addr), 0, "Nonce should not increment");
     }
