@@ -11,38 +11,6 @@ import {Nonces} from "@openzeppelin/utils/Nonces.sol";
 import {IERC1271} from "@openzeppelin/interfaces/IERC1271.sol";
 
 /**
- * `Permit` is the struct identifier name.
- * - `address` is the atomic type of named `owner`.
- * - `address` is the atomic type of named `spender`.
- * - `uint256` is the atomic type of named `value`.
- * - `uint256` is the atomic type of the randomly 
- *    generated value during the signing process named `nonce`.
- * - `uint256` is the atomic type of named `deadline`
- */
-struct Permit {
-    address owner;
-    address spender;
-    uint256 value;
-    uint256 nonce;
-    uint256 deadline;
-}
-
-/**
- * `Permit` is the struct identifier name.
- * - `address` is the atomic type of named `owner`.
- * - `uint256` is the atomic type of named `amount`.
- * - `uint256` is the atomic type of the randomly 
- *    generated value during the signing process named `nonce`.
- * - `uint256` is the atomic type of named `deadline`
- */
-struct PermitBurn {
-    address owner;
-    uint256 amount;
-    uint256 nonce;
-    uint256 deadline;
-}
-
-/**
  * @dev Implementation of the ERC-20 Permit extension allowing approvals to be made via signatures, as defined in
  * https://eips.ethereum.org/EIPS/eip-2612[ERC-2612].
  *

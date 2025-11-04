@@ -27,24 +27,6 @@ pragma solidity 0.8.26;
 import { ERC20Permit } from "./ERC20PermitWithERC1271.sol";
 import { IERC1271 } from "@openzeppelin/interfaces/IERC1271.sol";
 
-/**
- * `TransferWithAuthorization` is the struct identifier name.
- * - `address` is the atomic type of named `the sender`.
- * - `address` is the atomic type of named `the receiver`.
- * - `uint256` is the atomic type of named `value`.
- * - `uint256` is the atomic type of named `validAfter`
- * - `uint256` is the atomic type of named `validBefore`
- * - `uint256` is the atomic type of the randomly 
- *    generated value during the signing process named `nonce`.
- */
-struct TransferWithAuthorization {
-    address from;
-    address to;
-    uint256 value;
-    uint256 validAfter;
-    uint256 validBefore;
-    uint256 nonce;
-}
 
 /**
  * `ReceiveWithAuthorization` is the struct identifier name.

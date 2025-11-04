@@ -148,7 +148,7 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev Allows the contract owner to recover any ERC-20 tokens
+     * @dev Allows the governance timelockcontroller to recover any ERC-20 tokens
      * that were accidentally sent to this contract.
      * @param tokenAddress The address of the ERC-20 token to recover.
      * @param amount The amount of the ERC-20 token to recover
@@ -166,10 +166,10 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
     }
     
     /**
-     * @dev Allows the contract owner to recover any ERC-20 tokens
+     * @dev Allows the governance timelockcontroller to recover any ERC-721 tokens
      * that were accidentally sent to this contract.
-     * @param tokenAddress The address of the ERC-20 token to recover.
-     * @param tokenId The address to which the recoverd tokens will be sent.
+     * @param tokenAddress The address of the ERC-721 token to recover.
+     * @param tokenId The ID of the token to recover.
      */
     function recoverNFT(
         address tokenAddress,
@@ -193,7 +193,7 @@ contract Tea is Ownable2Step, EIP3009, ERC20Burnable, ReentrancyGuard {
     }
 
     /**
-     * @dev Allows the contract owner to recover any ETH
+     * @dev Allows the governance timelockcontroller to recover any ETH
      * that was accidentally sent to this contract via self destruct.
      */
     function recoverNative(uint256 amount) external virtual onlyTimelock nonReentrant {
