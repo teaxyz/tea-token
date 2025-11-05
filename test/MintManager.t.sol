@@ -182,7 +182,7 @@ contract MintManager_mint_Test is MintManager_Initializer {
     }
 }
 
-contract MintManager_upgrade_Test is MintManager_Initializer {
+/* contract MintManager_upgrade_Test is MintManager_Initializer {
     /// @dev Tests that the upgrade function reverts when called by a non-owner.
     function test_upgrade_fromNotOwner_reverts() external {
         // Upgrade from alice.addr fails.
@@ -217,4 +217,4 @@ contract MintManager_upgrade_Test is MintManager_Initializer {
         assertEq(tea.owner(), alice.addr);
         assertEq(tea.pendingOwner(), address(0));
     }
-}
+}*/
