@@ -26,6 +26,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
     ERC1271Wallet internal smartWallet;
     PasskeyWallet internal passkeyWallet;
 
+    VmSafe.Wallet internal treasurySafe = vm.createWallet("Treasury Safe Account");
     VmSafe.Wallet internal initialGovernor = vm.createWallet("Initial Gov Account");
     VmSafe.Wallet internal alice = vm.createWallet("Alice Account");
     VmSafe.Wallet internal bob = vm.createWallet("Bob Account");
@@ -59,7 +60,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         );
 
         vm.prank(initialGovernor.addr);
-        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)));
+        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)), treasurySafe.addr);
 
         tea = Tea(payable(tokenDeploy.tea()));
         mintManager = MintManager(tokenDeploy.mintManager());
@@ -423,7 +424,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(bob, hash);
 
         vm.prank(smartWalletOwner.addr);
-        vm.expectRevert(abi.encodeWithSelector(ERC20PermitWithERC1271.ERC2612InvalidSigner.selector, bob.addr, address(smartWallet)));
+        vm.expectRevert(abi.encodeWithSelector(ERC20PermitWithERC1271.ERC2612InvalidSigner.selector, 0x0, address(smartWallet)));
         tea.permit(
             address(smartWallet),
             alice.addr,
@@ -1453,7 +1454,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.prank(tea.recoverer());
         tea.recoverToken(address(token), 1);
 
-        assertEq(token.balanceOf(tea.TREASURY_SAFE()), 1);
+        assertEq(token.balanceOf(tea.treasury_safe()), 1);
         assertEq(token.balanceOf(address(tea)), 0);
     }
 
@@ -1468,7 +1469,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // With SafeERC20, this would expectRevert instead of succeeding silently
         // Uncomment below line when SafeERC20 is adopted:
         
-        uint256 treasuryBalanceBefore = nonStandardToken.balanceOf(tea.TREASURY_SAFE());
+        uint256 treasuryBalanceBefore = nonStandardToken.balanceOf(tea.treasury_safe());
         uint256 teaBalanceBefore = nonStandardToken.balanceOf(address(tea));
 
         vm.prank(tea.recoverer());
@@ -1476,7 +1477,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         tea.recoverToken(address(nonStandardToken), 1000);
 
         assertEq(nonStandardToken.balanceOf(address(tea)), teaBalanceBefore, "PROBLEM: Tokens should have moved but stayed in tea contract");
-        assertEq(nonStandardToken.balanceOf(tea.TREASURY_SAFE()), treasuryBalanceBefore, "PROBLEM: Treasury should have received tokens but didn't");
+        assertEq(nonStandardToken.balanceOf(tea.treasury_safe()), treasuryBalanceBefore, "PROBLEM: Treasury should have received tokens but didn't");
     }
 
     function test_recoverNFT_onlyRecoverer_reverts() public {
@@ -1495,7 +1496,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.prank(tea.recoverer());
         tea.recoverNFT(address(nft), 2025);
 
-        assertEq(nft.ownerOf(2025), tea.TREASURY_SAFE());
+        assertEq(nft.ownerOf(2025), tea.treasury_safe());
     }
 
     function test_recoverEth_onlyRecoverer_reverts() public {
@@ -1516,7 +1517,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.prank(tea.recoverer());
         tea.sweepSelf(1);
 
-        assertEq(tea.balanceOf(tea.TREASURY_SAFE()), 1);
+        assertEq(tea.balanceOf(tea.treasury_safe()), 1);
         assertEq(tea.balanceOf(address(tea)), 0);
     }
 
@@ -1542,14 +1543,14 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.prank(tea.recoverer());
         tea.recoverNative(amount);
     
-        assertEq(address(tea.TREASURY_SAFE()).balance, amount);
+        assertEq(address(tea.treasury_safe()).balance, amount);
         assertEq(address(tea).balance, 0);
     }   
 
     function test_recoverNative_afterSelfDestruct_invalid_amount() public {
         // Deploy mock that can selfdestruct
         SelfDestructingMock selfDestructingMock = new SelfDestructingMock();
-        address safe = tea.TREASURY_SAFE();
+        address safe = tea.treasury_safe();
     
         // Send some ETH to the mock contract
         uint256 amount = 1 ether;

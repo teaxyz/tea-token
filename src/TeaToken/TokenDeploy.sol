@@ -42,7 +42,7 @@ contract TokenDeploy {
     /// @notice Deploys the Tea and MintManager contracts.
     /// @param salt The salt to use for the Tea contract deployment.
     /// @param salt2 The salt to use for the MintManager contract deployment.
-    function deploy(bytes32 salt, bytes32 salt2, bytes32 salt3) external {
+    function deploy(bytes32 salt, bytes32 salt2, bytes32 salt3, address treasury_safe) external {
         // One time use.
         if (msg.sender != INITIAL_GOVERNOR) revert Unauthorized();
         if (tea != address(0)) revert AlreadyDeployed();
@@ -58,7 +58,7 @@ contract TokenDeploy {
         timelockController = _timeLockController;
 
         // Deploy tea.
-        tea = address(new Tea{ salt: salt }(address(this), timelockController));
+        tea = address(new Tea{ salt: salt }(address(this), timelockController, treasury_safe));
 
         // Compute and transfer ownership.
         bytes32 codeHash =

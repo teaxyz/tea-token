@@ -15,6 +15,7 @@ contract MintManager_Initializer is PRBTest, StdCheats {
     TokenDeploy internal tokenDeploy;
     MintManager internal mintManager;
 
+    VmSafe.Wallet internal treasurySafe = vm.createWallet("Treasury Safe Account");
     VmSafe.Wallet internal initialGovernor = vm.createWallet("Initial Gov Account");
     VmSafe.Wallet internal alice = vm.createWallet("Alice Account");
     VmSafe.Wallet internal bob = vm.createWallet("Bob Account");
@@ -30,7 +31,7 @@ contract MintManager_Initializer is PRBTest, StdCheats {
         );
 
         vm.prank(initialGovernor.addr);
-        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)));
+        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)), treasurySafe.addr);
 
         tea = Tea(payable(tokenDeploy.tea()));
         mintManager = MintManager(tokenDeploy.mintManager());

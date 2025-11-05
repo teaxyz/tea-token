@@ -46,6 +46,8 @@ library Crypto {
             try IERC1271(signer).isValidSignature(digest, signature) returns (bytes4 magicValue) {
                 if (magicValue == IERC1271.isValidSignature.selector) {
                     return (true, address(0));
+                } else {
+                    return (false, address(0));
                 }
             } catch {
                 return (false, recovered);

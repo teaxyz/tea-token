@@ -33,12 +33,8 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
     // Add using directive (at contract level)
     using SafeERC20 for IERC20;
 
-    bytes4 public constant ERC1271_MAGIC_VALUE = 0x1626ba7e;
-
-    bytes4 constant ERC1271_INVALID_SIGNATURE = 0xffffffff;
-
     address public recoverer;
-    address public constant TREASURY_SAFE = 0xcDb68686290310dD8623371E1db53157dB6b8cA1;
+    address public treasury_safe;
 
     /* -------------------------------- Constants ------------------------------- */
 
@@ -70,13 +66,14 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
 
     /* ------------------------------- Constructor ------------------------------ */
 
-    constructor(address initialGovernor_, address recoverer_)
+    constructor(address initialGovernor_, address recoverer_, address treasury_safe_)
         ERC20("TEA", "TEA")
         ERC20PermitWithERC1271("TEA")
         Ownable(initialGovernor_)
     {
         recoverer = recoverer_;
         totalMinted = INITIAL_SUPPLY;
+        treasury_safe = treasury_safe_;
 
         _mint(initialGovernor_, INITIAL_SUPPLY);
     }
@@ -111,9 +108,9 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
         IERC20 token = IERC20(tokenAddress);
 
         // Transfer the tokens from this contract to the specified address.
-        token.safeTransfer(TREASURY_SAFE, amount);
+        token.safeTransfer(treasury_safe, amount);
         
-        emit RecoveredToken(tokenAddress, TREASURY_SAFE, amount);
+        emit RecoveredToken(tokenAddress, treasury_safe, amount);
     }
     
     /**
@@ -130,9 +127,9 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
         IERC721 nft = IERC721(tokenAddress);
         
         // This line attempts the safe transfer of the NFT
-        nft.safeTransferFrom(address(this), TREASURY_SAFE, tokenId);
+        nft.safeTransferFrom(address(this), treasury_safe, tokenId);
 
-        emit RecoveredNFT(tokenAddress, TREASURY_SAFE, tokenId);
+        emit RecoveredNFT(tokenAddress, treasury_safe, tokenId);
     }
 
     /**
@@ -140,7 +137,7 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
      * @param amount amount of token to sweep
      */
     function sweepSelf(uint256 amount) external virtual onlyRecoverer nonReentrant {
-        _transfer(address(this), TREASURY_SAFE, amount);
+        _transfer(address(this), treasury_safe, amount);
     }
 
     /**
@@ -148,10 +145,10 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
      * that was accidentally sent to this contract via self destruct.
      */
     function recoverNative(uint256 amount) external virtual onlyRecoverer nonReentrant {
-        (bool ok, ) = TREASURY_SAFE.call{value: amount}("");
-        if (!ok) revert RecoverNativeFailed(TREASURY_SAFE, amount);
+        (bool ok, ) = treasury_safe.call{value: amount}("");
+        if (!ok) revert RecoverNativeFailed(treasury_safe, amount);
 
-        emit RecoveredNative(TREASURY_SAFE, amount);
+        emit RecoveredNative(treasury_safe, amount);
     }
 
     error NativeNotAccepted();
