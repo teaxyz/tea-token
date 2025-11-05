@@ -2,6 +2,7 @@
 pragma solidity 0.8.26;
 
 /* solhint-disable no-unused-import */
+import { Ownable2Step } from "@openzeppelin/access/Ownable2Step.sol";
 import { Ownable } from "@openzeppelin/access/Ownable.sol";
 /* solhint-enable no-unused-import */
 import { Tea } from "./Tea.sol";
@@ -13,8 +14,8 @@ import { Tea } from "./Tea.sol";
 ///         token supply.
 /// @notice forked from
 ///         https://github.com/ethereum-optimism/optimism/blob/d356d92a33aa623e30e1e11435ec0c02da69d718/packages/contracts-bedrock/src/governance/MintManager.sol
-///         Modifications include no minting within first year, and using the TeaToken interface.
-contract MintManager is Ownable {
+///         Modifications include removing upgradeability, no minting within first year, and using the TeaToken interface.
+contract MintManager is Ownable2Step {
     /// @notice The TeaToken that the MintManager can mint tokens
     Tea public immutable tea;
 
@@ -48,11 +49,11 @@ contract MintManager is Ownable {
     ///         governance token per year.
     /// @param _account The account receiving minted tokens.
     /// @param _amount  The amount of tokens to mint.
-    function mintTo(address _account, uint256 _amount) external onlyOwner {
+    function mintInflationTo(address _account, uint256 _amount) external onlyOwner {
         require(mintPermittedAfter <= block.timestamp, "MintManager: minting not permitted yet");
         require(_amount <= (tea.totalSupply() * MINT_CAP) / DENOMINATOR, "MintManager: mint amount exceeds cap");
 
         mintPermittedAfter = block.timestamp + MINT_PERIOD;
-        tea.mintTo(_account, _amount);
+        tea.mintInflationTo(_account, _amount);
     }
 }

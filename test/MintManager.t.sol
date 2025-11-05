@@ -54,7 +54,7 @@ contract MintManager_mint_Test is MintManager_Initializer {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(initialGovernor.addr, 100);
+        mintManager.mintInflationTo(initialGovernor.addr, 100);
 
         // Token balance increases.
         assertEq(tea.balanceOf(initialGovernor.addr), tea.INITIAL_SUPPLY() + 100);
@@ -64,7 +64,7 @@ contract MintManager_mint_Test is MintManager_Initializer {
     function test_mint_fromOwner_reverts() external {
         vm.startPrank(initialGovernor.addr);
         vm.expectRevert("MintManager: minting not permitted yet");
-        mintManager.mintTo(initialGovernor.addr, 100);
+        mintManager.mintInflationTo(initialGovernor.addr, 100);
         vm.stopPrank();
         // Token balance increases.
         assertEq(tea.balanceOf(initialGovernor.addr), tea.INITIAL_SUPPLY());
@@ -75,7 +75,7 @@ contract MintManager_mint_Test is MintManager_Initializer {
         // Mint from alice.addr fails.
         vm.prank(alice.addr);
         vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, alice.addr));
-        mintManager.mintTo(initialGovernor.addr, 100);
+        mintManager.mintInflationTo(initialGovernor.addr, 100);
     }
 
     /// @dev Tests that the mint function properly mints tokens when called by the owner a second
@@ -84,7 +84,7 @@ contract MintManager_mint_Test is MintManager_Initializer {
         // Mint once.
         vm.warp(block.timestamp + 365 days);
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(initialGovernor.addr, 100);
+        mintManager.mintInflationTo(initialGovernor.addr, 100);
 
         // Token balance increases.
         assertEq(tea.balanceOf(initialGovernor.addr), tea.INITIAL_SUPPLY() + 100);
@@ -92,7 +92,7 @@ contract MintManager_mint_Test is MintManager_Initializer {
         // Mint again after period elapsed (2% max).
         vm.warp(block.timestamp + mintManager.MINT_PERIOD() + 1);
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(initialGovernor.addr, 2_000_000_000 ether + 2);
+        mintManager.mintInflationTo(initialGovernor.addr, 2_000_000_000 ether + 2);
 
         // Token balance increases.
         assertEq(tea.balanceOf(initialGovernor.addr), tea.INITIAL_SUPPLY() + 2_000_000_000 ether + 102);
@@ -104,7 +104,7 @@ contract MintManager_mint_Test is MintManager_Initializer {
         // Mint once.
         vm.warp(block.timestamp + 365 days);
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(initialGovernor.addr, 100);
+        mintManager.mintInflationTo(initialGovernor.addr, 100);
 
         // Token balance increases.
         assertEq(tea.balanceOf(initialGovernor.addr), tea.INITIAL_SUPPLY() + 100);
@@ -112,7 +112,7 @@ contract MintManager_mint_Test is MintManager_Initializer {
         // Mint again.
         vm.prank(initialGovernor.addr);
         vm.expectRevert("MintManager: minting not permitted yet");
-        mintManager.mintTo(initialGovernor.addr, 100);
+        mintManager.mintInflationTo(initialGovernor.addr, 100);
 
         // Token balance does not increase.
         assertEq(tea.balanceOf(initialGovernor.addr), tea.INITIAL_SUPPLY() + 100);
@@ -123,7 +123,7 @@ contract MintManager_mint_Test is MintManager_Initializer {
         // Mint once.
         vm.warp(block.timestamp + 365 days);
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(initialGovernor.addr, 100);
+        mintManager.mintInflationTo(initialGovernor.addr, 100);
 
         // Token balance increases.
         assertEq(tea.balanceOf(initialGovernor.addr), tea.INITIAL_SUPPLY() + 100);
@@ -132,7 +132,7 @@ contract MintManager_mint_Test is MintManager_Initializer {
         vm.warp(block.timestamp + mintManager.MINT_PERIOD() + 1);
         vm.prank(initialGovernor.addr);
         vm.expectRevert("MintManager: mint amount exceeds cap");
-        mintManager.mintTo(initialGovernor.addr, 2_000_000_000 ether + 3);
+        mintManager.mintInflationTo(initialGovernor.addr, 2_000_000_000 ether + 3);
 
         // Token balance does not increase.
         assertEq(tea.balanceOf(initialGovernor.addr), tea.INITIAL_SUPPLY() + 100);
@@ -145,12 +145,12 @@ contract MintManager_mint_Test is MintManager_Initializer {
 
         // Mint 1% first
         uint256 onePercent = (tea.totalSupply() * 10) / mintManager.DENOMINATOR();
-        mintManager.mintTo(initialGovernor.addr, onePercent);
+        mintManager.mintInflationTo(initialGovernor.addr, onePercent);
 
         // Try to mint another 1% - should fail as the mint period has not elapsed
         uint256 onePointFivePercent = (tea.totalSupply() * 10) / mintManager.DENOMINATOR();
         vm.expectRevert("MintManager: minting not permitted yet");
-        mintManager.mintTo(initialGovernor.addr, onePointFivePercent);
+        mintManager.mintInflationTo(initialGovernor.addr, onePointFivePercent);
         vm.stopPrank();
     }
 
@@ -159,13 +159,13 @@ contract MintManager_mint_Test is MintManager_Initializer {
         // First mint after 1 year
         vm.warp(ts + 365 days);
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(initialGovernor.addr, 100);
+        mintManager.mintInflationTo(initialGovernor.addr, 100);
 
         // Try minting exactly at mintPermittedAfter (should fail)
         vm.warp(ts + 365 days + mintManager.MINT_PERIOD() - 1);
         vm.prank(initialGovernor.addr);
         vm.expectRevert("MintManager: minting not permitted yet");
-        mintManager.mintTo(initialGovernor.addr, 100);
+        mintManager.mintInflationTo(initialGovernor.addr, 100);
     }
 
     function test_mint_exactlyAtCap_succeeds() external {
@@ -174,7 +174,7 @@ contract MintManager_mint_Test is MintManager_Initializer {
 
         // Calculate exact 2% of total supply
         uint256 exactCap = (tea.totalSupply() * mintManager.MINT_CAP()) / mintManager.DENOMINATOR();
-        mintManager.mintTo(initialGovernor.addr, exactCap);
+        mintManager.mintInflationTo(initialGovernor.addr, exactCap);
 
         // Verify balance increased by exactly 2%
         assertEq(tea.balanceOf(initialGovernor.addr), tea.INITIAL_SUPPLY() + exactCap);

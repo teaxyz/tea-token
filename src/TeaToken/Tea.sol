@@ -84,7 +84,7 @@ contract Tea is Ownable2Step, EIP3009WithERC1271, ERC20PermitWithERC1271, ERC20B
     /// @dev Increments `totalMinted`.
     /// @param account The address to receive minted tokens.
     /// @param value   The amount of tokens to be minted.
-    function mintTo(address account, uint256 value) external onlyOwner {
+    function mintInflationTo(address account, uint256 value) external onlyOwner {
         totalMinted = totalMinted + value;
 
         _mint(account, value);

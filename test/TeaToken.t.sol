@@ -80,11 +80,11 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
     function test_mint_fail() public {
         vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, address(this)));
-        tea.mintTo(alice.addr, 1);
+        tea.mintInflationTo(alice.addr, 1);
 
         vm.startPrank(initialGovernor.addr);
         vm.expectRevert(abi.encodeWithSelector(OwnableUnauthorizedAccount.selector, initialGovernor.addr));
-        tea.mintTo(alice.addr, 1);
+        tea.mintInflationTo(alice.addr, 1);
         vm.stopPrank();
     }
 
@@ -92,7 +92,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1);
+        mintManager.mintInflationTo(alice.addr, 1);
 
         assertEq(tea.totalSupply(), tea.INITIAL_SUPPLY() + 1);
         assertEq(tea.totalMinted(), tea.INITIAL_SUPPLY() + 1);
@@ -103,7 +103,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1);
+        mintManager.mintInflationTo(alice.addr, 1);
 
         vm.expectRevert(abi.encodeWithSelector(ERC20InsufficientAllowance.selector, address(this), 0, 1));
         tea.burnFrom(alice.addr, 1);
@@ -114,7 +114,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // Mint some tokens to alice
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 100);
+        mintManager.mintInflationTo(alice.addr, 100);
 
         // Test transfer
         vm.prank(alice.addr);
@@ -129,7 +129,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // Mint some tokens to alice
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 100);
+        mintManager.mintInflationTo(alice.addr, 100);
 
         // Alice approves Bob to spend 30 tokens
         vm.prank(alice.addr);
@@ -148,7 +148,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1);
+        mintManager.mintInflationTo(alice.addr, 1);
 
         vm.prank(alice.addr);
         tea.approve(address(this), 1);
@@ -164,7 +164,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 100);
+        mintManager.mintInflationTo(alice.addr, 100);
 
         vm.prank(alice.addr);
         vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, address(0)));
@@ -175,7 +175,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
         vm.prank(initialGovernor.addr);
         vm.expectRevert(abi.encodeWithSelector(IERC20Errors.ERC20InvalidReceiver.selector, address(0)));
-        mintManager.mintTo(address(0), 100);
+        mintManager.mintInflationTo(address(0), 100);
     }
 
     // ========================================
@@ -518,7 +518,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // Mint tokens to alice
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1000);
+        mintManager.mintInflationTo(alice.addr, 1000);
 
         // Alice permits bob to spend 500 tokens
         uint256 deadline = block.timestamp + 1000;
@@ -576,7 +576,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // Mint tokens to alice so she can burn
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1000);
+        mintManager.mintInflationTo(alice.addr, 1000);
 
         uint256 amount = 100;
         uint256 deadline = block.timestamp + 1000;
@@ -606,7 +606,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // Mint tokens to alice
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 2000);
+        mintManager.mintInflationTo(alice.addr, 2000);
 
         uint256 amount = 50;
         uint256 deadline = block.timestamp + 1000;
@@ -660,7 +660,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1000);
+        mintManager.mintInflationTo(alice.addr, 1000);
 
         uint256 amount = 10;
         uint256 deadline = block.timestamp + 1000;
@@ -691,7 +691,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         ERC1271Wallet wallet = new ERC1271Wallet(smartWalletOwner.addr);
 
         vm.startPrank(initialGovernor.addr);
-        mintManager.mintTo(address(wallet), 1000);
+        mintManager.mintInflationTo(address(wallet), 1000);
         vm.stopPrank();
 
         uint256 amount = 25;
@@ -730,7 +730,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // Mint tokens to alice
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1000);
+        mintManager.mintInflationTo(alice.addr, 1000);
 
         uint256 validAfter = block.timestamp - 1; // 1 second in the past
         uint256 validBefore = block.timestamp + 1000;
@@ -774,7 +774,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
 
         // Mint tokens to smart wallet
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(address(smartWallet), 1000);
+        mintManager.mintInflationTo(address(smartWallet), 1000);
 
         uint256 validAfter = block.timestamp - 1;
         uint256 validBefore = block.timestamp + 1000;
@@ -820,7 +820,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1000);
+        mintManager.mintInflationTo(alice.addr, 1000);
 
         uint256 validAfter = block.timestamp - 1;
         uint256 validBefore = block.timestamp + 1000;
@@ -853,7 +853,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1000);
+        mintManager.mintInflationTo(alice.addr, 1000);
 
         uint256 validAfter = block.timestamp - 1000;
         uint256 validBefore = block.timestamp - 1; // Already expired
@@ -882,7 +882,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1000);
+        mintManager.mintInflationTo(alice.addr, 1000);
 
         uint256 validAfter = block.timestamp + 1000;
         uint256 validBefore = block.timestamp + 2000;
@@ -911,7 +911,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1000);
+        mintManager.mintInflationTo(alice.addr, 1000);
 
         uint256 validAfter = block.timestamp - 1;
         uint256 validBefore = block.timestamp + 1000;
@@ -941,7 +941,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1000);
+        mintManager.mintInflationTo(alice.addr, 1000);
 
         uint256 validAfter = block.timestamp - 1;
         uint256 validBefore = block.timestamp + 1000;
@@ -984,7 +984,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1000);
+        mintManager.mintInflationTo(alice.addr, 1000);
 
         uint256 validAfter = block.timestamp - 1;
         uint256 validBefore = block.timestamp + 1000;
@@ -1086,7 +1086,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         vm.warp(block.timestamp + 365 days);
 
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(alice.addr, 1000);
+        mintManager.mintInflationTo(alice.addr, 1000);
 
         uint256 validAfter = block.timestamp - 1;
         uint256 validBefore = block.timestamp + 1000;
@@ -1132,7 +1132,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Mint tokens to passkey wallet
         vm.warp(block.timestamp + 365 days);
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(address(passkeyWallet), 1000);
+        mintManager.mintInflationTo(address(passkeyWallet), 1000);
 
         // Create permit digest
         bytes32 messageHash = keccak256(
@@ -1173,7 +1173,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Mint tokens to passkey wallet
         vm.warp(block.timestamp + 365 days);
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(address(passkeyWallet), 1000);
+        mintManager.mintInflationTo(address(passkeyWallet), 1000);
 
         bytes32 nonce = bytes32(uint256(1));
         uint256 validAfter = block.timestamp - 1; // Past time
@@ -1223,7 +1223,7 @@ contract TeaTokenTest is PRBTest, StdCheats {
         // Mint tokens to passkey wallet
         vm.warp(block.timestamp + 365 days);
         vm.prank(initialGovernor.addr);
-        mintManager.mintTo(address(passkeyWallet), 1000);
+        mintManager.mintInflationTo(address(passkeyWallet), 1000);
 
         bytes32 nonce = bytes32(uint256(2));
         uint256 validAfter = block.timestamp - 1; // Past time
