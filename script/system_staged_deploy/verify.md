@@ -16,23 +16,23 @@ https://api-sepolia.etherscan.io/api --constructor-args
 
 #### MAINNET
 
-<!-- forge verify-contract 0xd736AdFAD4C07c3fEc73993dd2e694db1b31C435 TokenDeploy --verifier-url 'https://sepolia.tea.xyz/api/' --constructor-args 000000000000000000000000cDb68686290310dD8623371E1db53157dB6b8cA1 --chain 10218 --verifier blockscout -->
+<!-- forge verify-contract 0x890BA97985b7c9441bb82974E10D4df9472C69E6 TokenDeploy --verifier-url 'https://sepolia.tea.xyz/api/' --constructor-args 000000000000000000000000cDb68686290310dD8623371E1db53157dB6b8cA1 --chain 10218 --verifier blockscout -->
 
-forge verify-contract 0xd736AdFAD4C07c3fEc73993dd2e694db1b31C435 TokenDeploy --verifier-url
+forge verify-contract 0x890BA97985b7c9441bb82974E10D4df9472C69E6 TokenDeploy --verifier-url
 'https://api.etherscan.io/v2/api' --constructor-args 000000000000000000000000cDb68686290310dD8623371E1db53157dB6b8cA1
 --chain 1
 
-forge verify-contract 0x7Eaf50f5C8eab3B4b9AADF86AC6cCDCA9f2EB250 TimelockController --verifier-url
+forge verify-contract 0x7ea6A97909A962643F92AFab3F543E6E76AFAC3d TimelockController --verifier-url
 'https://api.etherscan.io/v2/api' --constructor-args
 0000000000000000000000000000000000000000000000000000000000015180000000000000000000000000cdb68686290310dd8623371e1db53157db6b8ca1000000000000000000000000cdb68686290310dd8623371e1db53157db6b8ca1000000000000000000000000cdb68686290310dd8623371e1db53157db6b8ca1
 --chain 1
 
-forge verify-contract 0x7Ea27904Af7EEfB5a8c3ce973b2EE4670e2815D3 Tea --verifier-url 'https://api.etherscan.io/v2/api'
+forge verify-contract 0x7eA7ea50ed58BC4d0a9194bCD328E21F7Be80c2B Tea --verifier-url 'https://api.etherscan.io/v2/api'
 --constructor-args
-000000000000000000000000d736AdFAD4C07c3fEc73993dd2e694db1b31C43500000000000000000000000007EAEad8a44ceCE3c274e60c82989300D803fF82A000000000000000000000000cdb68686290310dd8623371e1db53157db6b8ca1
+000000000000000000000000d736AdFAD4C07c3fEc73993dd2e694db1b31C43500000000000000000000000007ea6A97909A962643F92AFab3F543E6E76AFAC3d000000000000000000000000cdb68686290310dd8623371e1db53157db6b8ca1
 --chain 1
 
-forge verify-contract 0x7ea3951648b1631425915C7F1C5D3f73dECC26C9 MintManager --verifier-url
+forge verify-contract 0x7ea0834250cB9719A432f5B091ae4131f594C082 MintManager --verifier-url
 'https://api.etherscan.io/v2/api' --constructor-args
-000000000000000000000000cdb68686290310dd8623371e1db53157db6b8ca10000000000000000000000007Ea27904Af7EEfB5a8c3ce973b2EE4670e2815D3
+000000000000000000000000cdb68686290310dd8623371e1db53157db6b8ca10000000000000000000000007eA7ea50ed58BC4d0a9194bCD328E21F7Be80c2B
 --chain 1

@@ -48,14 +48,17 @@ contract TokenDeploy {
         // One time use.
         if (msg.sender != INITIAL_GOVERNOR) revert Unauthorized();
         if (tea != address(0)) revert AlreadyDeployed();
-        
+
         address[] memory addresses = new address[](1);
 
         addresses[0] = INITIAL_GOVERNOR;
-        
+
         // Set up timelock with the Initial Governor as owner/admin
-        bytes32 codeHashTLC =
-            keccak256(abi.encodePacked(type(TimelockController).creationCode, abi.encode(24 hours, addresses, addresses, INITIAL_GOVERNOR)));
+        bytes32 codeHashTLC = keccak256(
+            abi.encodePacked(
+                type(TimelockController).creationCode, abi.encode(24 hours, addresses, addresses, INITIAL_GOVERNOR)
+            )
+        );
         address _timeLockController = Create2.computeAddress(salt3, codeHashTLC, address(this));
         timelockController = _timeLockController;
 
@@ -72,6 +75,12 @@ contract TokenDeploy {
         Tea(payable(tea)).transfer(INITIAL_GOVERNOR, Tea(payable(tea)).totalSupply());
 
         // Record address.
-        if (_mintManager != address(new MintManager{ salt: salt2 }(INITIAL_GOVERNOR, payable(tea)))) revert AddressMismatch();
+        if (_mintManager != address(new MintManager{ salt: salt2 }(INITIAL_GOVERNOR, payable(tea)))) {
+            revert AddressMismatch();
+        }
+        if (
+            _timeLockController
+                != address(new TimelockController{ salt: salt3 }(24 hours, addresses, addresses, INITIAL_GOVERNOR))
+        ) revert AddressMismatch();
     }
 }
