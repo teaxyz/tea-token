@@ -23,5 +23,5 @@ contract TeaTokenDeployScript is BaseScript {
 }
 
 // forge -vvvv script script/system_staged_deploy/0_TokenDeploy_Deploy.s.sol  --rpc-url
-// 'https://tea-sepolia.g.alchemy.com/v2/CnnuuM3hMxX9rZcvUP6nQDMsQCYVWQcl' --private-key "$DEPLOYER_PRIVATE_KEY"
+// 'https://tea-sepolia.g.alchemy.com/v2/$ALCHEMY_API_KEY' --private-key "$DEPLOYER_PRIVATE_KEY"
 // --broadcast
