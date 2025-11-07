@@ -9,11 +9,13 @@ import { Tea } from "../src/TeaToken/Tea.sol";
 import { TokenDeploy } from "../src/TeaToken/TokenDeploy.sol";
 import { MintManager } from "../src/TeaToken/MintManager.sol";
 import { DeterministicDeployer } from "../src/utils/DeterministicDeployer.sol";
+import { Token_ERC20, Token_ERC721 } from "./helpers/Mocks.t.sol";
 
 /* solhint-disable max-states-count */
 contract TokenDeployTest is PRBTest, StdCheats {
     TokenDeploy internal tokenDeploy;
 
+    VmSafe.Wallet internal treasurySafe = vm.createWallet("Treasury Safe Account");
     VmSafe.Wallet internal initialGovernor = vm.createWallet("Initial Gov Account");
     VmSafe.Wallet internal alice = vm.createWallet("Alice Account");
     VmSafe.Wallet internal bob = vm.createWallet("Bob Account");
@@ -32,34 +34,36 @@ contract TokenDeployTest is PRBTest, StdCheats {
     function test_deploy_fail() public {
         bytes32 salt = keccak256(abi.encode(0x00, "tea"));
         vm.expectRevert(Unauthorized.selector);
-        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)));
+        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)), treasurySafe.addr);
     }
 
     function test_repeat_deploy_fail() public {
         bytes32 salt = keccak256(abi.encode(0x00, "tea"));
 
         vm.prank(initialGovernor.addr);
-        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)));
+        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)), treasurySafe.addr);
 
         vm.prank(initialGovernor.addr);
         vm.expectRevert(AlreadyDeployed.selector);
-        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)));
+        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)), treasurySafe.addr);
     }
 
     function test_deploy_succeed() public {
         bytes32 salt = keccak256(abi.encode(0x00, "tea"));
 
         vm.prank(initialGovernor.addr);
-        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)));
+        tokenDeploy.deploy(keccak256(abi.encode(0x01, salt)), keccak256(abi.encode(0x02, salt)), keccak256(abi.encode(0x03, salt)), treasurySafe.addr);
 
         address _tea = tokenDeploy.tea();
         address _mintManager = tokenDeploy.mintManager();
+        address _timelockController = tokenDeploy.timelockController();
 
         assertNotEq(_tea, address(0));
         assertNotEq(_mintManager, address(0));
-        assertEq(Tea(_tea).owner(), _mintManager);
-        assertEq(Tea(_tea).totalSupply(), Tea(_tea).INITIAL_SUPPLY());
-        assertEq(Tea(_tea).totalMinted(), Tea(_tea).INITIAL_SUPPLY());
-        assertEq(Tea(_tea).balanceOf(initialGovernor.addr), Tea(_tea).INITIAL_SUPPLY());
+        assertNotEq(_timelockController, address(0));
+        assertEq(Tea(payable(_tea)).owner(), _mintManager);
+        assertEq(Tea(payable(_tea)).totalSupply(), Tea(payable(_tea)).INITIAL_SUPPLY());
+        assertEq(Tea(payable(_tea)).totalMinted(), Tea(payable(_tea)).INITIAL_SUPPLY());
+        assertEq(Tea(payable(_tea)).balanceOf(initialGovernor.addr), Tea(payable(_tea)).INITIAL_SUPPLY());
     }
 }

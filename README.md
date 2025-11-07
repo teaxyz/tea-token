@@ -113,3 +113,6 @@ forge test
 
 This project is licensed under Apache License, Version 2.0.
 
+## Example ERC-1271/EIP-2612/V-3009 with and without EOA support
+
+See TEXT_VECTORS.md

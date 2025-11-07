@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PermitBurn",
+  "description": "Schema for PermitBurn struct used in ERC20PermitWithERC1271",
+  "type": "object",
+  "properties": {
+    "owner": { "$ref": "./common.json#/definitions/address" },
+    "amount": { "$ref": "./common.json#/definitions/uint256" },
+    "nonce": { "$ref": "./common.json#/definitions/uint256" },
+    "deadline": { "$ref": "./common.json#/definitions/uint256" }
+  },
+  "required": ["owner", "amount", "nonce", "deadline"],
+  "additionalProperties": false,
+  "examples": [
+    {
+      "owner": "0x0000000000000000000000000000000000aAaAaAa",
+      "amount": "1000000000000000000",
+      "nonce": "0",
+      "deadline": "1735689600"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Common definitions for tea-token artifacts",
+  "definitions": {
+    "address": {
+      "type": "string",
+      "pattern": "^0x[a-fA-F0-9]{40}$",
+      "description": "Hex encoded Ethereum address with 0x prefix"
+    },
+    "uint256": {
+      "type": "string",
+      "pattern": "^[0-9]+$",
+      "description": "Unsigned 256-bit integer encoded as a decimal string"
+    },
+    "bytes32": {
+      "type": "string",
+      "pattern": "^0x[a-fA-F0-9]{64}$",
+      "description": "32-byte hex string with 0x prefix"
+    }
+  }
+}
